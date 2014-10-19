@@ -28,8 +28,8 @@
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import time
-from etherbotix.ax12 import *
-from etherbotix.etherbotix import *
+from etherbotix_python.ax12 import *
+from etherbotix_python.etherbotix import *
 
 if __name__ == "__main__":
     e = Etherbotix()

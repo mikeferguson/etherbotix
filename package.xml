@@ -21,4 +21,6 @@
   <run_depend>std_srvs</run_depend>
   <run_depend>tf</run_depend>
   <run_depend>trajectory_msgs</run_depend>
+
+  <run_depend>python-scipy</run_depend>
 </package>
