@@ -44,9 +44,12 @@ class Controller:
         self.node = node
 
         # Get update rate
-        desired_rate = rospy.get_param("~controllers/"+name+"/rate", 100.0)
-        self.t_delta = rospy.Duration(1.0/desired_rate)
-        self.t_next = rospy.Time.now() + self.t_delta
+        desired_rate = rospy.get_param("~controllers/"+name+"/rate", -1)
+        if desired_rate > 0:
+            self.t_delta = rospy.Duration(1.0/desired_rate)
+            self.t_next = rospy.Time.now() + self.t_delta
+        else:
+            self.t_next = None
 
         # Additional output for joint states publisher
         self.joint_names = list()
@@ -87,10 +90,14 @@ class Controller:
     ## @param dt The timestep, as a rospy.Duration.
     def execute_update(self, dt):
         self.dt = dt
-        now = rospy.Time.now()
-        if now > self.t_next - dt:
+        if self.t_next:
+            now = rospy.Time.now()
+            if now > self.t_next - dt:
+                self.update()
+                self.t_next += self.t_delta
+        else:
+            # Update at full rate
             self.update()
-            self.t_next += self.t_delta
 
     ## @brief Internal function that is called on shutdown.
     def execute_shutdown(self):
