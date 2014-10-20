@@ -143,7 +143,7 @@ class DiffController(Controller):
 
             rospy.logdebug("Encoders: " + str(left) +","+ str(right))
 
-            # calculate odometry
+            # calculate position
             if self.enc_left == None:
                 d_left = 0
                 d_right = 0
@@ -155,8 +155,12 @@ class DiffController(Controller):
 
             d = (d_left+d_right)/2
             th = (d_right-d_left)/self.base_width
-            self.dx = d / elapsed
-            self.dr = th / elapsed
+
+            # calculate velocity
+            l_vel = self.node.etherbotix.motor1_vel / self.ticks_meter
+            r_vel = self.node.etherbotix.motor2_vel / self.ticks_meter
+            self.dx = (l_vel+r_vel)/2 * (1000.0/self.period)
+            self.dr = (r_vel-l_vel)/self.base_width * (1000.0/self.period)
 
             if (d != 0):
                 x = cos(th)*d
