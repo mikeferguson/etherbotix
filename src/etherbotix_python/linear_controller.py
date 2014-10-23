@@ -230,7 +230,7 @@ class LinearControllerIncremental(LinearControllerAbsolute):
                 self.last_reading = self.getPosition()
                 self.joint.setCurrentFeedback(self.last_reading)
             except Exception as e:
-                print "linear error: ", e
+                return
             # Update movement
             if self.joint.desired:
                 if self.joint.desired > self.joint.position + self.getStepSize():
@@ -242,7 +242,7 @@ class LinearControllerIncremental(LinearControllerAbsolute):
                     self.joint.desired = None
 
     def getPosition(self):
-        raw = self.node.etherbotix.getTimer12Count()
+        raw = self.node.etherbotix.tim12_count
         diff = raw - self.last_raw
         self.last_raw = raw
         self.position += self.last_speed * diff
