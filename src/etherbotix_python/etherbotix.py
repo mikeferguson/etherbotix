@@ -124,6 +124,7 @@ class Etherbotix:
                     return packets
                 if time.time() - t > timeout:
                     return -1
+                time.sleep(0.001)
 
     ## @brief Actually send a packet to the etherbotix
     ## @param packet Can be either a list of integers, or a byte array (string in python2)
