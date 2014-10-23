@@ -407,8 +407,8 @@ class Etherbotix:
             return False
         self.baud_rate = packet.params[P_BAUD_RATE]
         self.system_time = struct.unpack_from("<L", packet.params, self.P_SYSTEM_TIME)[0]
-        self.servo_current = struct.unpack_from("<h", packet.params, self.P_SERVO_CURRENT)[0]
-        self.aux_current = struct.unpack_from("<h", packet.params, self.P_AUX_CURRENT)[0]
+        self.servo_current = struct.unpack_from("<h", packet.params, self.P_SERVO_CURRENT)[0] / 1000.0  # mA->A
+        self.aux_current = struct.unpack_from("<h", packet.params, self.P_AUX_CURRENT)[0] / 1000.0  # mA->A
         self.system_voltage = struct.unpack_from("<B", packet.params, self.P_SYSTEM_VOLTAGE)[0] / 10.0
         self.led = struct.unpack_from("<H", packet.params, self.P_LED)[0]
 
