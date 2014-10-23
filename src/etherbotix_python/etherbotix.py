@@ -88,6 +88,7 @@ class Etherbotix:
         self._conn.bind( ("", 0) )
         self._conn.setblocking(0)
         self.packets = queue.Queue()
+        self.system_time = 0
         if sys.version < "3":
             self.MAGIC = "\xffBOT"
         else:

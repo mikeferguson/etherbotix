@@ -32,19 +32,18 @@
 ## @file publishers.py Publishers of ROS data.
 
 import rospy
-from diagnostic_msgs.msg import DiagnosticArray
+from diagnostic_msgs.msg import DiagnosticArray, DiagnosticStatus, KeyValue
 from sensor_msgs.msg import JointState, Imu
 
 ## @brief Publishes diagnostics at some update rate
 class DiagnosticsPublisher:
-    """ Class to handle publications of joint_states message. """
 
     def __init__(self):
         self.t_delta = rospy.Duration(1.0/rospy.get_param("~diagnostic_rate", 1.0))
         self.t_next = rospy.Time.now() + self.t_delta
         self.pub = rospy.Publisher('diagnostics', DiagnosticArray, queue_size=5)
 
-    def update(self, joints, controllers):
+    def update(self, joints, controllers, etherbotix = None):
         now = rospy.Time.now()
         if now > self.t_next:
             # Create message
@@ -59,9 +58,32 @@ class DiagnosticsPublisher:
                 d = joint.getDiagnostics()
                 if d:
                     msg.status.append(d)
+            # If we have Etherbotix, create diagnostics
+            if etherbotix and etherbotix.system_time > 0:
+                msg.status.append(self.getEtherbotixDiagnostics(etherbotix))
             # Publish and update stats
             self.pub.publish(msg)
             self.t_next = now + self.t_delta
+
+    ## @brief Diagnostics generation for Etherbotix.
+    ##        Located here since etherbotix.py is ROS-free.
+    def getEtherbotixDiagnostics(self, etherbotix):
+        msg = DiagnosticStatus()
+        msg.name = "etherbotix"
+        msg.level = DiagnosticStatus.OK
+        msg.message = "OK"
+        msg.hardware_id = "TODO"  # TODO pull this from board
+        # System Voltage
+        if etherbotix.system_voltage < 10.0:
+            msg.level = DiagnosticStatus.ERROR
+            msg.message = "Battery depleted!"
+        msg.values.append(KeyValue("Voltage", str(etherbotix.system_voltage)+"V"))
+        # Currents
+        msg.values.append(KeyValue("Servo Current", str(etherbotix.servo_current)+"A"))
+        msg.values.append(KeyValue("Aux. Current", str(etherbotix.aux_current)+"A"))
+        msg.values.append(KeyValue("Packets", str(etherbotix.packets_recv)))
+        msg.values.append(KeyValue("Packets Bad", str(etherbotix.packets_bad)))
+        return msg
 
 ## @brief Publishes joint_state messages on every update.
 class JointStatePublisher:
