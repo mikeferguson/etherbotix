@@ -339,6 +339,10 @@ class Etherbotix:
     P_PACKETS_RECV = 120
     P_PACKETS_BAD = 124
 
+    # Devices
+    P_DEVICE_BOOTLOADER = 192
+    P_DEVICE_UNIQUE_ID = 193
+
     ## @brief Get the value of an analog input pin.
     ## @param index The ID of the pin to read (0 to 2).
     ## @return 16-bit analog value of the pin, None if error.
