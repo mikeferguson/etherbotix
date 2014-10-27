@@ -112,7 +112,7 @@ class EtherbotixNode:
 
             # Publish feedback
             self.joint_state_publisher.update(self.joints.values(), self.controllers)
-            self.diagnostics.update(self.joints.values(), self.controllers)
+            self.diagnostics.update(self.joints.values(), self.controllers, self.etherbotix)
 
             r.sleep()
 

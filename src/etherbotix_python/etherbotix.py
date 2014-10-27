@@ -88,6 +88,7 @@ class Etherbotix:
         self._conn.bind( ("", 0) )
         self._conn.setblocking(0)
         self.packets = queue.Queue()
+        self.system_time = 0
         if sys.version < "3":
             self.MAGIC = "\xffBOT"
         else:
@@ -338,6 +339,10 @@ class Etherbotix:
     P_PACKETS_RECV = 120
     P_PACKETS_BAD = 124
 
+    # Devices
+    P_DEVICE_BOOTLOADER = 192
+    P_DEVICE_UNIQUE_ID = 193
+
     ## @brief Get the value of an analog input pin.
     ## @param index The ID of the pin to read (0 to 2).
     ## @return 16-bit analog value of the pin, None if error.
@@ -407,8 +412,8 @@ class Etherbotix:
             return False
         self.baud_rate = packet.params[P_BAUD_RATE]
         self.system_time = struct.unpack_from("<L", packet.params, self.P_SYSTEM_TIME)[0]
-        self.servo_current = struct.unpack_from("<h", packet.params, self.P_SERVO_CURRENT)[0]
-        self.aux_current = struct.unpack_from("<h", packet.params, self.P_AUX_CURRENT)[0]
+        self.servo_current = struct.unpack_from("<h", packet.params, self.P_SERVO_CURRENT)[0] / 1000.0  # mA->A
+        self.aux_current = struct.unpack_from("<h", packet.params, self.P_AUX_CURRENT)[0] / 1000.0  # mA->A
         self.system_voltage = struct.unpack_from("<B", packet.params, self.P_SYSTEM_VOLTAGE)[0] / 10.0
         self.led = struct.unpack_from("<H", packet.params, self.P_LED)[0]
 
