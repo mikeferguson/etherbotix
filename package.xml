@@ -24,4 +24,5 @@
   <run_depend>topic_tools</run_depend>
 
   <run_depend>python-scipy</run_depend>
+  <!-- Need to add depend on python-tftpy for upload script-->
 </package>
