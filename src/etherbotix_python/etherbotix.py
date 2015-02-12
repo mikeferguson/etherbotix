@@ -252,6 +252,16 @@ class Etherbotix:
         except:
             return -1
 
+    ## @brief Get the torque of a servo.
+    ## @param index The ID of the device to read.
+    ## @return The servo position.
+    def getLoad(self, index):
+        values = self.read(index, P_PRESENT_LOAD_L, 2)
+        try:
+            return int(values[0]) + ((int(values[1])<<8)&0x3)
+        except:
+            return -1
+
     ## @brief Get the voltage of a device.
     ## @param index The ID of the device to read.
     ## @return The voltage, in Volts.
