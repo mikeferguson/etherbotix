@@ -37,11 +37,11 @@ from topic_tools.srv import MuxSelect
 class SimpleTeleop:
 
     def __init__(self):
-        self.axis_linear = rospy.get_param("axis_linear", 3)
-        self.axis_angular = rospy.get_param("axis_angular", 0)
-        self.axis_deadman = rospy.get_param("axis_deadman", 10)
-        self.scale_linear = rospy.get_param("scale_linear", 0.5)
-        self.scale_angular = rospy.get_param("scale_angular", 2.0)
+        self.axis_linear = rospy.get_param("~axis_linear", 3)
+        self.axis_angular = rospy.get_param("~axis_angular", 0)
+        self.axis_deadman = rospy.get_param("~axis_deadman", 10)
+        self.scale_linear = rospy.get_param("~scale_linear", 0.5)
+        self.scale_angular = rospy.get_param("~scale_angular", 2.0)
         self.last_message = rospy.Time(0)
         self.twist = Twist()
 
