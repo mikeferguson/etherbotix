@@ -460,6 +460,12 @@ class Etherbotix:
         except:
             return None
 
+    ## @brief Get the unique ID of the board
+    def getUniqueId(self):
+        packet = self.read(253, self.P_DEVICE_UNIQUE_ID, 12)
+        unique_id = "".join([hex(p)[2:4] for p in packet])
+        return "0x" + unique_id
+
     ###########################################################################
     # Extended State
 
