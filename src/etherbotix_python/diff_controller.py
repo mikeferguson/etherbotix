@@ -141,8 +141,6 @@ class DiffController(Controller):
                 # board is not yet updated
                 return False
 
-            rospy.logdebug("Encoders: " + str(left) +","+ str(right))
-
             # calculate position
             if self.enc_left == None:
                 d_left = 0
@@ -169,6 +167,10 @@ class DiffController(Controller):
                 self.y = self.y + (sin(self.th)*x + cos(self.th)*y)
             if (th != 0):
                 self.th = self.th + th
+
+            # Update joint_states publisher
+            self.joint_positions = [self.enc_left/self.ticks_meter, self.enc_right/self.ticks_meter]
+            self.joint_velocities = [l_vel * (1000.0/self.period), r_vel * (1000.0/self.period)]
 
         # Publish or perish
         quaternion = Quaternion()
