@@ -391,7 +391,7 @@ class Etherbotix:
             value = mask
         if direction > 0:
             direction = mask
-        self.write(253, self.P_DIGITAL_IN, [mask, value, direction], ret=False)
+        self.write(253, self.P_DIGITAL_IN, [mask, direction, value], ret=False)
 
     ## @brief Set the mode for Timer 12.
     ## @param mode The mode, one of:
