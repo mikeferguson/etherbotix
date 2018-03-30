@@ -88,7 +88,47 @@ class Etherbotix:
         self._conn.bind( ("", 0) )
         self._conn.setblocking(0)
         self.packets = queue.Queue()
-        self.system_time = 0
+
+        self.version = -1
+        self.baud_rate = -1
+        self.digital_in = 0
+        self.digital_dir = 0
+        self.digital_out = 0
+        self.system_time = -1
+        self.servo_current = 0
+        self.aux_current = 0
+        self.system_voltage = 0
+        self.led = 0
+        self.motor_period = 10
+        self.motor_max_step = 10
+        self.motor1_vel = 0
+        self.motor2_vel = 0
+        self.motor1_pos = 0
+        self.motor2_pos = 0
+        self.motor1_current = 0
+        self.motor2_current = 0
+        self.motor1_kp = 0
+        self.motor1_kd = 0
+        self.motor1_ki = 0
+        self.motor1_windup = 0
+        self.motor2_kp = 0
+        self.motor2_kd = 0
+        self.motor2_ki = 0
+        self.motor2_windup = 0
+        self.accel_x = 0
+        self.accel_y = 0
+        self.accel_z = 0
+        self.gyro_x = 0
+        self.gyro_y = 0
+        self.gyro_z = 0
+        self.mag_x = 0
+        self.mag_y = 0
+        self.mag_z = 0
+        self.tim12_mode = 0
+        self.tim12_count = 0
+        self.packets_recv = 0
+        self.packets_bad = 0
+
         if sys.version < "3":
             self.MAGIC = "\xffBOT"
         else:
@@ -368,8 +408,9 @@ class Etherbotix:
     ## @return 0 for low, 255 for high, None if error.
     def getDigital(self, index):
         try:
-            if index < 32:
+            if index < 8:
                 x = self.read(253, self.P_DIGITAL_IN, 1)[0]
+                self.digital_in = x
             else:
                 return None
         except:
@@ -384,14 +425,23 @@ class Etherbotix:
     ## @param value 0 or 1.
     ## @param direction Input (0) or output (1)
     def setDigital(self, index, value, direction = 1):
-        if index > 8:
+        if index > 7:
             return None
         mask = 2**index
         if value > 0:
             value = mask
         if direction > 0:
             direction = mask
-        self.write(253, self.P_DIGITAL_IN, [mask, direction, value], ret=False)
+        value = (self.digital_out & ~mask) | value
+        direction = (self.digital_dir & ~mask) | direction
+        if self.version > 0:
+            # Use new API, no mask
+            self.write(253, self.P_DIGITAL_DIR, [direction, value], ret=False)
+        else:
+            self.write(253, self.P_DIGITAL_IN, [mask, direction, value], ret=False)
+        # Store in case we don't read soon
+        self.digital_out = value
+        self.digital_dir = direction
 
     ## @brief Set the mode for Timer 12.
     ## @param mode The mode, one of:
@@ -405,7 +455,8 @@ class Etherbotix:
     def getTimer12Count(self):
         try:
             values = self.read(253, self.P_TIM12_COUNT, 2)
-            return int(values[0]) + (int(values[1])<<8)
+            self.tim12_count = int(values[0]) + (int(values[1])<<8)
+            return self.tim12_count
         except:
             return None
 
@@ -420,7 +471,12 @@ class Etherbotix:
             return False
         if packet.id != 253 or len(packet.params) != 128:
             return False
-        self.baud_rate = packet.params[P_BAUD_RATE]
+
+        self.version = packet.params_int[P_VERSION]
+        self.baud_rate = packet.params_int[P_BAUD_RATE]
+        self.digital_in = packet.params_int[self.P_DIGITAL_IN]
+        self.digital_dir = packet.params_int[self.P_DIGITAL_DIR]
+        self.digital_out = packet.params_int[self.P_DIGITAL_OUT]
         self.system_time = struct.unpack_from("<L", packet.params, self.P_SYSTEM_TIME)[0]
         self.servo_current = struct.unpack_from("<h", packet.params, self.P_SERVO_CURRENT)[0] / 1000.0  # mA->A
         self.aux_current = struct.unpack_from("<h", packet.params, self.P_AUX_CURRENT)[0] / 1000.0  # mA->A
