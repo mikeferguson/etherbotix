@@ -1,6 +1,6 @@
 # Etherbotix Drivers
 
-This ROS package contains python-based ROS drivers for the Etherbotixboard.
+This ROS package contains python-based ROS drivers for the Etherbotix board.
 
 ## Configuring for a Robot
 
