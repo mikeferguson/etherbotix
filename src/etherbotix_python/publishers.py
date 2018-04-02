@@ -72,7 +72,7 @@ class DiagnosticsPublisher:
         msg.name = "etherbotix"
         msg.level = DiagnosticStatus.OK
         msg.message = "OK"
-        msg.hardware_id = "TODO"  # TODO pull this from board
+        msg.hardware_id = etherbotix.getUniqueId()
         # System Voltage
         if etherbotix.system_voltage < 10.0:
             msg.level = DiagnosticStatus.ERROR

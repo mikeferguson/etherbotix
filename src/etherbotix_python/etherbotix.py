@@ -89,6 +89,7 @@ class Etherbotix:
         self._conn.setblocking(0)
         self.packets = queue.Queue()
 
+        self.unique_id = None
         self.version = -1
         self.baud_rate = -1
         self.digital_in = 0
@@ -462,9 +463,10 @@ class Etherbotix:
 
     ## @brief Get the unique ID of the board
     def getUniqueId(self):
-        packet = self.read(253, self.P_DEVICE_UNIQUE_ID, 12)
-        unique_id = "".join([hex(p)[2:4] for p in packet])
-        return "0x" + unique_id
+        if self.unique_id == None:
+            packet = self.read(253, self.P_DEVICE_UNIQUE_ID, 12)
+            self.unique_id = "".join([hex(p)[2:4] for p in packet])
+        return "0x" + self.unique_id
 
     ###########################################################################
     # Extended State
