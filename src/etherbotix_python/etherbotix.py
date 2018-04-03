@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-# Copyright (c) 2014 Michael E. Ferguson
+# Copyright (c) 2014-2018 Michael E. Ferguson
 # Copyright (c) 2008-2013 Vanadium Labs LLC.
 # All right reserved.
 #
@@ -100,6 +100,7 @@ class Etherbotix:
         self.aux_current = 0
         self.system_voltage = 0
         self.led = 0
+        self.imu_flags = -1
         self.motor_period = 10
         self.motor_max_step = 10
         self.motor1_vel = 0
@@ -347,6 +348,7 @@ class Etherbotix:
     P_AUX_CURRENT = 22
     P_SYSTEM_VOLTAGE = 24
     P_LED = 25
+    P_IMU_FLAGS = 28
 
     # Base Motors
     P_MOTOR_PERIOD = 29
@@ -468,6 +470,9 @@ class Etherbotix:
             self.unique_id = "".join([hex(p)[2:4] for p in packet])
         return "0x" + self.unique_id
 
+    def getImuVersion(self):
+        return self.imu_flags & 0x0f
+
     ###########################################################################
     # Extended State
 
@@ -490,6 +495,7 @@ class Etherbotix:
         self.aux_current = struct.unpack_from("<h", packet.params, self.P_AUX_CURRENT)[0] / 1000.0  # mA->A
         self.system_voltage = struct.unpack_from("<B", packet.params, self.P_SYSTEM_VOLTAGE)[0] / 10.0
         self.led = struct.unpack_from("<H", packet.params, self.P_LED)[0]
+        self.imu_flags = packet.params_int[self.P_IMU_FLAGS]
 
         self.motor_period = struct.unpack_from("<B", packet.params, self.P_MOTOR_PERIOD)[0]
         self.motor_max_step = struct.unpack_from("<H", packet.params, self.P_MOTOR_MAX_STEP)[0]

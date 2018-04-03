@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-# Copyright (c) 2014 Michael Ferguson
+# Copyright (c) 2014-2018 Michael Ferguson
 # Copyright (c) 2011 Vanadium Labs LLC.
 # All right reserved.
 #
@@ -33,6 +33,7 @@
 
 import rospy
 from diagnostic_msgs.msg import DiagnosticArray, DiagnosticStatus, KeyValue
+from geometry_msgs.msg import Vector3Stamped
 from sensor_msgs.msg import JointState, Imu
 
 ## @brief Publishes diagnostics at some update rate
@@ -111,20 +112,77 @@ class JointStatePublisher:
 class ImuPublisher:
 
     def __init__(self):
-        # Default gyro parameters are for L3GD20 (2000dps mode)
-        self.gyro_scale = rospy.get_param("~imu/gyro/scale", 0.001221111)
-        self.gyro_covariance = rospy.get_param("~imu/gyro/covariance", 0.004868938)
-
-        # Default accelerometer parameters are for LSM303DLHC (2g/full scale)
-        self.accel_scale = rospy.get_param("~imu/accel/scale", 0.000598773)
-        self.accel_covariance = rospy.get_param("~imu/accel/covariance", 0.34644996)
+        # Determine which version of IMU we are using
+        self.version = 0
 
         # Name of tf frame to associate data with
         self.frame = rospy.get_param("~imu/frame_id", "imu_link")
 
+        # Add publishers
         self._pub = rospy.Publisher("imu_raw", Imu, queue_size=5)
+        self._pub_mag = None
+        if rospy.get_param("~imu/publish_mag", True):
+            self._pub_mag = rospy.Publisher("mag_raw", Vector3Stamped, queue_size=5)
 
     def publish(self, etherbotix):
+        # Can't publish yet if don't know the version of our IMU
+        if etherbotix.version > 0 and etherbotix.getImuVersion() == 0:
+           return
+
+        # Need to read params first time we get version
+        if self.version == 0:
+            # Save IMU version so we only run this once
+            self.version = etherbotix.getImuVersion()
+
+            # Backwards compatability with old firmware
+            if etherbotix.version == 0:
+                self.version = 2
+                # L3GD20 (2000dps mode)
+                self.gyro_scale = 0.001221111
+                self.gyro_covariance = 0.004868938
+                # LSM303DLHC (2g/full scale mode)
+                self.accel_scale = 0.000598773
+                self.accel_covariance = 0.34644996
+                # LSM303DLHC (
+                self.mag_scale = 0.000909
+
+            # Set default params
+            if self.version == 2:
+                # L3GD20 (2000dps mode)
+                self.gyro_scale = 0.001221111
+                self.gyro_covariance = 0.004868938
+                # LSM303DLHC (8g/full scale mode)
+                self.accel_scale = 0.0023957
+                self.accel_covariance = 0.34644996
+                # LSM303DLHC (8.1 gauss mode)
+                self.mag_scale = 0.0043478
+            elif self.version == 3:
+                # L3GD20H (2000dps mode)
+                self.gyro_scale = 0.001221111
+                self.gyro_covariance = 0.004868938
+                # LSM303D (8g/full scale mode)
+                self.accel_scale = 0.0023964
+                self.accel_covariance = 0.34644996
+                # LSM303D (12 gauss mode)
+                self.mag_scale = 0.000479
+            elif self.version == 5:
+                # LSM6DS33 (2000dps mode)
+                self.gyro_scale = 0.001221111
+                self.gyro_covariance = 0.004868938
+                # LSM6DS33 (8g/full scale mode)
+                self.accel_scale = 0.0023964
+                self.accel_covariance = 0.34644996
+                # LIS3MDL (12 gauss mode)
+                self.mag_scale = 0.000438404
+
+            self.gyro_scale = rospy.get_param("~imu/gyro/scale", self.gyro_scale)
+            self.gyro_covariance = rospy.get_param("~imu/gyro/covariance", self.gyro_covariance)
+
+            self.accel_scale = rospy.get_param("~imu/accel/scale", self.accel_scale)
+            self.accel_covariance = rospy.get_param("~imu/accel/covariance", self.accel_covariance)
+
+            self.mag_scale = rospy.get_param("~imu/mag/scale", self.mag_scale)
+
         msg = Imu()
         msg.header.stamp = rospy.Time.now()
         msg.header.frame_id = self.frame
@@ -148,3 +206,10 @@ class ImuPublisher:
 
         self._pub.publish(msg)
 
+        if self._pub_mag:
+            mag = Vector3Stamped()
+            mag.header = msg.header
+            mag.vector.x = etherbotix.mag_x * self.mag_scale
+            mag.vector.y = etherbotix.mag_y * self.mag_scale
+            mag.vector.z = etherbotix.mag_z * self.mag_scale
+            self._pub_mag.publish(mag)

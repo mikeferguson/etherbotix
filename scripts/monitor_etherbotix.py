@@ -75,28 +75,29 @@ if __name__ == "__main__":
                 packets_ret += 1
                 e.updateFromPacket(pkt)
 
-                screen.addstr(3, 3, "System Time:      %d" % e.system_time)
-                screen.addstr(4, 3, "System Voltage:   ")
+                screen.addstr(3, 3, "Firmware Version: %d" % e.version)
+                screen.addstr(4, 3, "System Time:      %d" % e.system_time)
+                screen.addstr(5, 3, "System Voltage:   ")
                 if (e.system_voltage < 11.0):
-                    screen.addstr(4, 21, "%5.2fV" % e.system_voltage, curses.color_pair(DEFAULT_ERROR))
+                    screen.addstr(5, 21, "%5.2fV" % e.system_voltage, curses.color_pair(DEFAULT_ERROR))
                 else:
-                    screen.addstr(4, 21, "%5.2fV" % e.system_voltage)
+                    screen.addstr(5, 21, "%5.2fV" % e.system_voltage)
                 servo_current = (0.7 * servo_current) + (0.3 * e.servo_current)
                 aux_current = (0.7 * aux_current) + (0.3 * e.aux_current)
-                screen.addstr(5, 3, "Servo Current:    %.2fA        " % servo_current)
-                screen.addstr(6, 3, "Aux. Current:     %.2fA        " % aux_current)
+                screen.addstr(6, 3, "Servo Current:    %.2fA        " % servo_current)
+                screen.addstr(7, 3, "Aux. Current:     %.2fA        " % aux_current)
                 reliability = float(packets_ret)/float(packets_sent) * 100.0
-                screen.addstr(8, 3, "Packets Sent:     %d" % packets_sent)
-                screen.addstr(9, 3, "Packets Recv:     %d" % e.packets_recv)
-                screen.addstr(10, 3, "Packets Returned: %d (%.2f%%)      " % (packets_ret, reliability))
-                screen.addstr(11, 3, "Packets Bad:      %d" % e.packets_bad)
+                screen.addstr(9, 3, "Packets Sent:     %d" % packets_sent)
+                screen.addstr(10, 3, "Packets Recv:     %d" % e.packets_recv)
+                screen.addstr(11, 3, "Packets Returned: %d (%.2f%%)      " % (packets_ret, reliability))
+                screen.addstr(12, 3, "Packets Bad:      %d" % e.packets_bad)
 
                 # Digital IO Status
                 digital_dir = " ".join(["I" if e.digital_dir & (1<<n) == 0 else "O" for n in range(8)])
                 digital_in = " ".join(["L" if e.digital_in & (1<<n) == 0 else "H" for n in range(8)])
-                screen.addstr(13, 3, "Digital    0 1 2 3 4 5 6 7")
-                screen.addstr(14, 3, "Direction: %s" % digital_dir, curses.color_pair(WHITE_OK))
-                screen.addstr(15, 3, "Value:     %s" % digital_in,  curses.color_pair(WHITE_OK))
+                screen.addstr(14, 3, "Digital    0 1 2 3 4 5 6 7")
+                screen.addstr(15, 3, "Direction: %s" % digital_dir, curses.color_pair(WHITE_OK))
+                screen.addstr(16, 3, "Value:     %s" % digital_in,  curses.color_pair(WHITE_OK))
 
                 # Motors & IMU in second column
                 screen.addstr(1, 40, "Motor 1")
@@ -105,7 +106,11 @@ if __name__ == "__main__":
                 screen.addstr(5, 40, "Motor 2")
                 screen.addstr(6, 40, "Position:      %15d" % e.motor2_pos, curses.color_pair(WHITE_OK))
                 screen.addstr(7, 40, "Velocity:      %15d" % e.motor2_vel, curses.color_pair(WHITE_OK))
-                screen.addstr(9, 40, "IMU")
+                screen.addstr(9, 40, "IMU (v%d)  " % e.getImuVersion())
+                if (e.imu_flags & 0xE0) != 0xE0:
+                    screen.addstr(9, 65, "ERROR", curses.color_pair(DEFAULT_ERROR))
+                else:
+                    screen.addstr(9, 65, "     ", curses.color_pair(DEFAULT_ERROR))
                 screen.addstr(10, 40, "Accel:  %6d  %6d  %6d" % (e.accel_x, e.accel_y, e.accel_z), curses.color_pair(WHITE_OK))
                 screen.addstr(11, 40, "Gyro:   %6d  %6d  %6d" % (e.gyro_x, e.gyro_y, e.gyro_z), curses.color_pair(WHITE_OK))
                 screen.addstr(12, 40, "Mag:    %6d  %6d  %6d" % (e.mag_x, e.mag_y, e.mag_z), curses.color_pair(WHITE_OK))
