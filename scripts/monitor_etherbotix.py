@@ -93,8 +93,8 @@ if __name__ == "__main__":
                 screen.addstr(12, 3, "Packets Bad:      %d" % e.packets_bad)
 
                 # Digital IO Status
-                digital_dir = " ".join(["S" if e.user_io_use & (1<<n) else "A" if e.digital_dir & (1<<n) == 0 else "O" for n in range(3)]) + " "
-                digital_dir += " ".join(["S" if e.user_io_use & (1<<(3+n)) else "I" if e.digital_dir & (1<<(3+n)) == 0 else "O" for n in range(5)])
+                digital_dir = " ".join(["U" if e.user_io_use & (1<<n) else "A" if e.digital_dir & (1<<n) == 0 else "O" for n in range(3)]) + " "
+                digital_dir += " ".join(["U" if e.user_io_use & (1<<(3+n)) else "I" if e.digital_dir & (1<<(3+n)) == 0 else "O" for n in range(5)])
                 digital_in = " ".join(["L" if e.digital_in & (1<<n) == 0 else "H" for n in range(8)])
                 screen.addstr(14, 3, "Digital    0 1 2 3 4 5 6 7")
                 screen.addstr(15, 3, "Direction: %s" % digital_dir, curses.color_pair(WHITE_OK))

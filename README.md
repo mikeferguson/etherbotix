@@ -23,3 +23,9 @@ In addition to the ROS tools, the low level monitor_etherbotix.py is
 available.
 
 ![Monitor](https://raw.githubusercontent.com/mikeferguson/etherbotix_python/master/docs/monitor.png)
+
+The digital IO section uses the following notation:
+ * A = analog input
+ * I/O = digital input or output respectively
+ * U = pin is in use by user io (SPI, USART, etc)
+ * H/L = digital status of pin, high or low.
