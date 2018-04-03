@@ -96,6 +96,9 @@ class Etherbotix:
         self.digital_dir = 0
         self.digital_out = 0
         self.user_io_use = 0
+        self.a0 = 0
+        self.a1 = 0
+        self.a2 = 0
         self.system_time = -1
         self.servo_current = 0
         self.aux_current = 0
@@ -493,6 +496,9 @@ class Etherbotix:
         self.digital_dir = packet.params_int[self.P_DIGITAL_DIR]
         self.digital_out = packet.params_int[self.P_DIGITAL_OUT]
         self.user_io_use = packet.params_int[self.P_USER_IO_USE]
+        self.a0 = struct.unpack_from("<H", packet.params, self.P_A0)[0]
+        self.a1 = struct.unpack_from("<H", packet.params, self.P_A1)[0]
+        self.a2 = struct.unpack_from("<H", packet.params, self.P_A2)[0]
         self.system_time = struct.unpack_from("<L", packet.params, self.P_SYSTEM_TIME)[0]
         self.servo_current = struct.unpack_from("<h", packet.params, self.P_SERVO_CURRENT)[0] / 1000.0  # mA->A
         self.aux_current = struct.unpack_from("<h", packet.params, self.P_AUX_CURRENT)[0] / 1000.0  # mA->A
