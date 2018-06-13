@@ -92,7 +92,7 @@ class LinearJoint(Joint):
         msg = DiagnosticStatus()
         msg.name = self.name
         msg.level = DiagnosticStatus.OK
-        if self.desired:
+        if self.desired != None:
             msg.message = "Moving"
         else:
             msg.message = "OK"
@@ -104,10 +104,7 @@ class LinearJoint(Joint):
         if self.node.sim:
             self.position = req.data
         else:
-            if req.data <= self.max_pos and req.data >= self.min_pos:
-                self.desired = req.data
-            else:
-                rospy.logerr(self.name + ": requested position is out of range: " + str(req))
+            self.setControlOutput(req.data)
 
     def readingToPosition(self, reading):
         low = 0
@@ -154,7 +151,7 @@ class LinearControllerAbsolute(Controller):
             except Exception as e:
                 print "linear error: ", e
             # Update movement
-            if self.joint.desired:
+            if self.joint.desired != None:
                 if self.joint.desired > self.joint.position:
                     self.setSpeed(1)
                 elif self.joint.desired < self.joint.position:
@@ -232,7 +229,7 @@ class LinearControllerIncremental(LinearControllerAbsolute):
             except Exception as e:
                 return
             # Update movement
-            if self.joint.desired:
+            if self.joint.desired != None:
                 if self.joint.desired > self.joint.position + self.getStepSize():
                     self.setSpeed(1)
                 elif self.joint.desired < self.joint.position - self.getStepSize():
