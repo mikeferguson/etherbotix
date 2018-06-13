@@ -217,7 +217,7 @@ class LinearControllerIncremental(LinearControllerAbsolute):
     def startup(self):
         if not self.node.sim:
             self.node.etherbotix.setTimer12Mode(1)
-            self.zeroEncoder()
+            self.zeroEncoder(get_latest=True)
 
     def update(self):
         now = rospy.Time.now()
@@ -239,6 +239,9 @@ class LinearControllerIncremental(LinearControllerAbsolute):
                     self.joint.desired = None
 
     def getPosition(self):
+        # The raw value only ever goes up, regardless of direction of
+        # motion. We therefore have to apply our own direction value
+        # to the measured difference in position
         raw = self.node.etherbotix.tim12_count
         diff = raw - self.last_raw
         self.last_raw = raw
@@ -249,7 +252,7 @@ class LinearControllerIncremental(LinearControllerAbsolute):
             self.position = self.joint.keys[-1]
         return self.position
 
-    def zeroEncoder(self, timeout=15.0):
+    def zeroEncoder(self, timeout=15.0, get_latest=False):
         rospy.loginfo(self.name + ": zeroing encoder")
         self.setSpeed(1)
         last_pos = None
@@ -257,7 +260,11 @@ class LinearControllerIncremental(LinearControllerAbsolute):
             if rospy.is_shutdown():
                 return
             try:
-                new_pos = self.getPosition()
+                if get_latest:
+                    # When starting up, we need to get latest value
+                    # since main loop will not be running
+                    self.node.etherbotix.getTimer12Count()
+                new_pos = self.node.etherbotix.tim12_count
             except:
                 continue
             if last_pos == new_pos:
@@ -266,6 +273,7 @@ class LinearControllerIncremental(LinearControllerAbsolute):
             rospy.sleep(1)
         self.setSpeed(0)
         self.position = 0
+        self.last_raw = last_pos
         self.joint.setCurrentFeedback(self.position)
 
     def zeroCb(self, msg):
