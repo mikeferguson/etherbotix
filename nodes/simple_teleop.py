@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-# Copyright (c) 2014 Michael Ferguson
+# Copyright (c) 2014-2020, Michael Ferguson
 # All right reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -52,7 +52,7 @@ class SimpleTeleop:
             self._service = rospy.ServiceProxy('cmd_vel_mux/select', MuxSelect)
             rospy.loginfo('...connected')
 
-        self._vel_pub = rospy.Publisher("teleop/cmd_vel", Twist)
+        self._vel_pub = rospy.Publisher("teleop/cmd_vel", Twist, queue_size=1)
         self._joy_sub = rospy.Subscriber("joy", Joy, self.joyCb)
 
     def joyCb(self, msg):

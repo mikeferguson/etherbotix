@@ -112,7 +112,7 @@ class DiffController(Controller):
         self.odomBroadcaster = None
         if rospy.get_param("~controllers/"+name+"/publish_tf", True):
             self.odomBroadcaster = TransformBroadcaster()
-		
+
         # Subscribe to command
         rospy.Subscriber("cmd_vel", Twist, self.cmdVelCb)
 
