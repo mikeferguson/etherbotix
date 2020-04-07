@@ -42,10 +42,11 @@ class GPSPublisher(Etherbotix):
     def __init__(self, ip="192.168.0.42", port=6707):
         Etherbotix.__init__(self, ip, port)
         self.publisher = rospy.Publisher("nmea_sentence", Sentence, queue_size=10)
+        self.frame_id = rospy.get_param("~frame_id", "base_link")
 
     def setup(self):
         # Set baud to 9600, set terminating character to '\n' (10)
-        self.write(253, self.P_USART_BAUD, [207, 10])                
+        self.write(253, self.P_USART_BAUD, [207, 10])
 
     def run(self):
         self.setup()
@@ -53,6 +54,7 @@ class GPSPublisher(Etherbotix):
             packet = self.getPacket()
             if packet:
                 s = Sentence()
+                s.header.frame_id = self.frame_id
                 s.header.stamp = rospy.Time.now()
                 s.sentence = packet.params.rstrip()
                 self.publisher.publish(s)
