@@ -58,53 +58,55 @@ class DiffController(Controller):
         Controller.__init__(self, node, name)
         self.last_cmd = rospy.Time.now()
 
+        # Parameter namespace
+        ns = "~controllers/" + name + "/"
+
         # Parameters: command timeout
-        self.timeout = rospy.get_param("~controllers/"+name+"/timeout", 0.5)
+        self.timeout = rospy.get_param(ns + "timeout", 0.5)
 
         # Parameters: geometry
-        self.ticks_meter = float(rospy.get_param("~controllers/"+name+"/ticks_meter"))
-        self.base_width = float(rospy.get_param("~controllers/"+name+"/base_width"))
+        self.ticks_meter = float(rospy.get_param(ns + "ticks_meter"))
+        self.base_width = float(rospy.get_param(ns + "base_width"))
 
         # This is the wheel rollout - ticks/revolution - used for joint_states publisher
         # ticks_meter is clearly wrong, but was the old behavior
-        self.ticks_rotation = float(rospy.get_param("~controllers/"+name+"/ticks_rotation", self.ticks_meter))
+        self.ticks_rotation = float(rospy.get_param(ns + "ticks_rotation", self.ticks_meter))
         # One rotation is 2PI radians
         self.ticks_rotation /= 2 * pi
 
-        self.base_frame_id = rospy.get_param("~controllers/"+name+"/base_frame_id", "base_link")
-        self.odom_frame_id = rospy.get_param("~controllers/"+name+"/odom_frame_id", "odom")
+        self.base_frame_id = rospy.get_param(ns + "base_frame_id", "base_link")
+        self.odom_frame_id = rospy.get_param(ns + "odom_frame_id", "odom")
 
         # Parameters: PID
-        self.Kp = rospy.get_param("~controllers/"+name+"/Kp", 1.0)
-        self.Kd = rospy.get_param("~controllers/"+name+"/Kd", 0.0)
-        self.Ki = rospy.get_param("~controllers/"+name+"/Ki", 0.1)
-        self.Kw = rospy.get_param("~controllers/"+name+"/Kw", 400.0)
+        self.Kp = rospy.get_param(ns + "Kp", 1.0)
+        self.Kd = rospy.get_param(ns + "Kd", 0.0)
+        self.Ki = rospy.get_param(ns + "Ki", 0.1)
+        self.Kw = rospy.get_param(ns + "Kw", 400.0)
 
         # Parameters: motor period
-        self.period = rospy.get_param("~controllers/"+name+"/period", 10.0)
+        self.period = rospy.get_param(ns + "period", 10.0)
 
         # Parameters: acceleration
-        self.accel_limit = rospy.get_param("~controllers/"+name+"/accel_limit", 0.1)
+        self.accel_limit = rospy.get_param(ns + "accel_limit", 0.1)
 
         # Parameters: twist covariance
-        self.covariance_vx = rospy.get_param("~controllers/"+name+"/covariance_vx", 1e-3)
-        self.covariance_vy = rospy.get_param("~controllers/"+name+"/covariance_vy", 1e-3)
-        self.covariance_vz = rospy.get_param("~controllers/"+name+"/covariance_vz", 1e-6)
-        self.covariance_wx = rospy.get_param("~controllers/"+name+"/covariance_wx", 1e-6)
-        self.covariance_wy = rospy.get_param("~controllers/"+name+"/covariance_wy", 1e-6)
-        self.covariance_wz = rospy.get_param("~controllers/"+name+"/covariance_wz", 1e-3)
+        self.covariance_vx = rospy.get_param(ns + "covariance_vx", 1e-3)
+        self.covariance_vy = rospy.get_param(ns + "covariance_vy", 1e-3)
+        self.covariance_vz = rospy.get_param(ns + "covariance_vz", 1e-6)
+        self.covariance_wx = rospy.get_param(ns + "covariance_wx", 1e-6)
+        self.covariance_wy = rospy.get_param(ns + "covariance_wy", 1e-6)
+        self.covariance_wz = rospy.get_param(ns + "covariance_wz", 1e-3)
 
         # Output for joint states publisher
-        left_joint = rospy.get_param("~controllers/"+name+"/left_joint_name", "base_l_wheel_joint")
-        right_joint = rospy.get_param("~controllers/"+name+"/right_joint_name", "base_r_wheel_joint")
+        left_joint = rospy.get_param(ns + "left_joint_name", "base_l_wheel_joint")
+        right_joint = rospy.get_param(ns + "right_joint_name", "base_r_wheel_joint")
         self.joint_names = [left_joint, right_joint]
         self.joint_positions = [0.0, 0.0]
         self.joint_velocities = [0.0, 0.0]
         # Support for 4WD bases where the each side motor pair has a single encoder
-        if rospy.has_param("~controllers/"+name+"/left_joint_mimic") and \
-           rospy.has_param("~controllers/"+name+"/right_joint_mimic"):
-            left_mimic_joint = rospy.get_param("~controllers/"+name+"/left_joint_mimic", "base_lr_wheel_joint")
-            right_mimic_joint = rospy.get_param("~controllers/"+name+"/right_joint_mimic", "base_rr_wheel_joint")
+        if rospy.has_param(ns + "left_joint_mimic") and rospy.has_param(ns + "right_joint_mimic"):
+            left_mimic_joint = rospy.get_param(ns + "left_joint_mimic")
+            right_mimic_joint = rospy.get_param(ns + "right_joint_mimic")
             self.joint_names.extend([left_mimic_joint, right_mimic_joint])
             self.joint_positions.extend([0.0, 0.0])
             self.joint_velocities.extend([0.0, 0.0])
@@ -126,7 +128,7 @@ class DiffController(Controller):
         # Publish odometry, optionally TF
         self.odomPub = rospy.Publisher("odom", Odometry, queue_size=5)
         self.odomBroadcaster = None
-        if rospy.get_param("~controllers/"+name+"/publish_tf", True):
+        if rospy.get_param(ns + "publish_tf", True):
             self.odomBroadcaster = TransformBroadcaster()
 
         # Subscribe to command
