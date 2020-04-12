@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-# Copyright (c) 2014 Michael E. Ferguson
+# Copyright (c) 2014-2020 Michael E. Ferguson
 # Copyright (c) 2010-2011 Vanadium Labs LLC.
 # All right reserved.
 #
@@ -31,7 +31,7 @@
 
 ## @file diff_controller.py Differential drive controller for Etherbotix.
 
-from math import sin,cos,pi
+from math import sin, cos, pi
 
 import rospy
 from tf.broadcaster import TransformBroadcaster
@@ -65,6 +65,12 @@ class DiffController(Controller):
         self.ticks_meter = float(rospy.get_param("~controllers/"+name+"/ticks_meter"))
         self.base_width = float(rospy.get_param("~controllers/"+name+"/base_width"))
 
+        # This is the wheel rollout - ticks/revolution - used for joint_states publisher
+        # ticks_meter is clearly wrong, but was the old behavior
+        self.ticks_rotation = float(rospy.get_param("~controllers/"+name+"/ticks_rotation", self.ticks_meter))
+        # One rotation is 2PI radians
+        self.ticks_rotation /= 2 * pi
+
         self.base_frame_id = rospy.get_param("~controllers/"+name+"/base_frame_id", "base_link")
         self.odom_frame_id = rospy.get_param("~controllers/"+name+"/odom_frame_id", "odom")
 
@@ -89,9 +95,19 @@ class DiffController(Controller):
         self.covariance_wz = rospy.get_param("~controllers/"+name+"/covariance_wz", 1e-3)
 
         # Output for joint states publisher
-        self.joint_names = ["base_l_wheel_joint", "base_r_wheel_joint"]
+        left_joint = rospy.get_param("~controllers/"+name+"/left_joint_name", "base_l_wheel_joint")
+        right_joint = rospy.get_param("~controllers/"+name+"/right_joint_name", "base_r_wheel_joint")
+        self.joint_names = [left_joint, right_joint]
         self.joint_positions = [0.0, 0.0]
         self.joint_velocities = [0.0, 0.0]
+        # Support for 4WD bases where the each side motor pair has a single encoder
+        if rospy.has_param("~controllers/"+name+"/left_joint_mimic") and \
+           rospy.has_param("~controllers/"+name+"/right_joint_mimic"):
+            left_mimic_joint = rospy.get_param("~controllers/"+name+"/left_joint_mimic", "base_lr_wheel_joint")
+            right_mimic_joint = rospy.get_param("~controllers/"+name+"/right_joint_mimic", "base_rr_wheel_joint")
+            self.joint_names.extend([left_mimic_joint, right_mimic_joint])
+            self.joint_positions.extend([0.0, 0.0])
+            self.joint_velocities.extend([0.0, 0.0])
 
         # Internal data
         self.v_left = 0                 # current setpoint velocity
@@ -169,8 +185,11 @@ class DiffController(Controller):
                 self.th = self.th + th
 
             # Update joint_states publisher
-            self.joint_positions = [self.enc_left/self.ticks_meter, self.enc_right/self.ticks_meter]
+            self.joint_positions = [self.enc_left/self.ticks_rotation, self.enc_right/self.ticks_rotation]
             self.joint_velocities = [l_vel * (1000.0/self.period), r_vel * (1000.0/self.period)]
+            if len(self.joint_names) == 4:
+                self.joint_positions.extend(self.joint_positions)
+                self.joint_velocities.extend(self.joint_velocities)
 
         # Publish or perish
         quaternion = Quaternion()
@@ -292,4 +311,3 @@ class DiffController(Controller):
         params = struct.pack("<hh", left, right)
         params = [ord(x) for x in params]
         self.node.etherbotix.write(253, self.node.etherbotix.P_MOTOR1_VEL, params, ret=False)
-
