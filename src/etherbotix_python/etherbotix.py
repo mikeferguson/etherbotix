@@ -400,6 +400,8 @@ class Etherbotix:
     # Devices
     P_DEVICE_BOOTLOADER = 192
     P_DEVICE_UNIQUE_ID = 193
+    P_DEVICE_M1_TRACE = 194
+    P_DEVICE_M2_TRACE = 195
 
     ## @brief Get the value of an analog input pin.
     ## @param index The ID of the pin to read (0 to 2).
