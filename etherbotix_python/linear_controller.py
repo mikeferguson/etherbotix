@@ -149,7 +149,7 @@ class LinearControllerAbsolute(Controller):
                 self.last_reading = self.getPosition()
                 self.joint.setCurrentFeedback(self.last_reading)
             except Exception as e:
-                print "linear error: ", e
+                print("linear error: ", e)
             # Update movement
             if self.joint.desired != None:
                 if self.joint.desired > self.joint.position:

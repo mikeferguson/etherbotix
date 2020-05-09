@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 # Copyright (c) 2018 Michael Ferguson
 # All right reserved.
@@ -36,7 +36,7 @@ DEFAULT_ERROR = 2
 WHITE_OK = 3
 WHITE_ERROR = 4
 
-if __name__ == "__main__":
+def main(args=None):
     e = Etherbotix()
     t = time.time()
 
@@ -127,3 +127,6 @@ if __name__ == "__main__":
         pass
     finally:
         curses.endwin()
+
+if __name__ == "__main__":
+    main()
