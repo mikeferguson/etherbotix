@@ -20,7 +20,13 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'monitor_etherbotix = etherbotix_python.monitor_etherbotix:main',
+            'get_trace = etherbotix_python.tools.get_trace:main',
+            'monitor_etherbotix = etherbotix_python.tools.monitor_etherbotix:main',
+            'read_etherbotix = etherbotix_python.tools.read_etherbotix:main',
+            'read_servo = etherbotix_python.tools.read_servo:main',
+            'read_unique_id = etherbotix_python.tools.read_unique_id:main',
+            'reboot = etherbotix_python.tools.reboot:main',
+            'upload = etherbotix_python.tools.upload:main',
         ],
     },
 )

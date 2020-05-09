@@ -53,7 +53,7 @@ def get_baud_str(baud):
     else:
         return "UNKNOWN"
 
-if __name__ == "__main__":
+def main(args=None):
     e = Etherbotix()
     t = time.time()
 
@@ -99,3 +99,6 @@ if __name__ == "__main__":
     print("Tim12 Mode:     %d" % e.tim12_mode)
     if e.tim12_mode == 1:
         print("Tim12 Count:    %d" % e.tim12_count)
+
+if __name__=="__main__":
+    main()

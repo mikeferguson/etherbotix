@@ -31,9 +31,12 @@ import time, sys
 from etherbotix_python.ax12 import *
 from etherbotix_python.etherbotix import *
 
-if __name__ == "__main__":
+def main(args=None):
     e = Etherbotix()
     if len(sys.argv) > 1:
         print(e.getPosition(int(sys.argv[1])))
     else:
         print(e.getPosition(1))
+
+if __name__=="__main__":
+    main()

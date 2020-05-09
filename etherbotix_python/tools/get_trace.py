@@ -21,7 +21,7 @@ def plot_trace(pos, vel, set, cmd):
     plot2.plot(pos, label='pos', color='r')
     plot.show()
 
-if __name__ == "__main__":
+def main(args=None):
     # Standard arguments
     parser = argparse.ArgumentParser(description="Read a motor trace from etherbotix.")
     parser.add_argument("--left", action="store_true", help="Read a trace from left motor.")
@@ -104,3 +104,5 @@ if __name__ == "__main__":
 
             plot_trace(pos, vel, set, cmd)
 
+if __name__ == "__main__":
+    main()

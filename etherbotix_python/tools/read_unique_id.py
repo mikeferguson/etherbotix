@@ -30,7 +30,7 @@
 import time
 from etherbotix_python.etherbotix import *
 
-if __name__ == "__main__":
+def main(args=None):
     e = Etherbotix()
     raw_id = e.read(253, e.P_DEVICE_UNIQUE_ID, 12)
     id = 0
@@ -38,3 +38,5 @@ if __name__ == "__main__":
         id += raw_id[i]<<(8*i)
     print(hex(id)[2:].replace("L",""))
 
+if __name__=="__main__":
+	main()

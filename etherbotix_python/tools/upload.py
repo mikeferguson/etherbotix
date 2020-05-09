@@ -33,42 +33,46 @@ import tftpy
 import time
 from etherbotix_python.etherbotix import *
 
-if len(sys.argv) < 2:
-    print("usage: upload.py <file.bin>")
-    exit(-1)
+def main(args=None):
+    if len(sys.argv) < 2:
+        print("usage: upload.py <file.bin>")
+        exit(-1)
 
-# Load File
-firmware = open(sys.argv[1], "rb").read()
+    # Load File
+    firmware = open(sys.argv[1], "rb").read()
 
-# Compute length (in words)
-length = len(firmware)/4
+    # Compute length (in words)
+    length = len(firmware)/4
 
-# Compute crc32
-crc32 = binascii.crc32(firmware)
+    # Compute crc32
+    crc32 = binascii.crc32(firmware)
 
-# Insert metadata
-metadata = [0 for i in range(512)]
-metadata[0] = crc32 & 0xff
-metadata[1] = (crc32>>8) & 0xff
-metadata[2] = (crc32>>16) & 0xff
-metadata[3] = (crc32>>24) & 0xff
-metadata[4] = length & 0xff
-metadata[5] = (length>>8) & 0xff
-metadata[6] = (length>>16) & 0xff
-metadata[7] = (length>>24) & 0xff
-metadata = "".join(chr(x) for x in metadata)
-firmware = metadata + firmware
+    # Insert metadata
+    metadata = [0 for i in range(512)]
+    metadata[0] = crc32 & 0xff
+    metadata[1] = (crc32>>8) & 0xff
+    metadata[2] = (crc32>>16) & 0xff
+    metadata[3] = (crc32>>24) & 0xff
+    metadata[4] = length & 0xff
+    metadata[5] = (length>>8) & 0xff
+    metadata[6] = (length>>16) & 0xff
+    metadata[7] = (length>>24) & 0xff
+    metadata = "".join(chr(x) for x in metadata)
+    firmware = metadata + firmware
 
-# Newer versions of tftpy will allow passing in a StringIO,
-# but even Ubuntu Trusty does not have this version :(
-open("/tmp/firmware.bin", "wb").write(firmware)
+    # Newer versions of tftpy will allow passing in a StringIO,
+    # but even Ubuntu Trusty does not have this version :(
+    open("/tmp/firmware.bin", "wb").write(firmware)
 
-# Reboot the board
-e = Etherbotix()
-boot = [ord(c) for c in "BOOT"]
-e.write(253, 192, boot)
-time.sleep(3.0)
+    # Reboot the board
+    e = Etherbotix()
+    boot = [ord(c) for c in "BOOT"]
+    e.write(253, 192, boot)
+    time.sleep(3.0)
 
-# Upload using TFTP, set large timeout
-client = tftpy.TftpClient("192.168.0.42", 69)
-client.upload("firmware", "/tmp/firmware.bin", timeout=30)
+    # Upload using TFTP, set large timeout
+    client = tftpy.TftpClient("192.168.0.42", 69)
+    client.upload("firmware", "/tmp/firmware.bin", timeout=30)
+
+if __name__=="__main__":
+    main()
