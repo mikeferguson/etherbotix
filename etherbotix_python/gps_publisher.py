@@ -33,46 +33,39 @@
 # ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
-import rclpy
-from rclpy.node import Node
-
+import rospy
 from nmea_msgs.msg import Sentence
 from etherbotix_python.etherbotix import Etherbotix
 
 
-class GPSPublisher(Node):
+class GPSPublisher(Etherbotix):
     """Publishes GPS sentences from USART3."""
 
     def __init__(self, ip="192.168.0.42", port=6707):
-        super().__init__("gps_publisher")
-        self.etherbotix = Etherbotix(ip, port)
-        self.publisher = self.create_publisher(Sentence, "nmea_sentence", 10)
-        self.frame_id = "base_link"  # rospy.get_param("~frame_id", "base_link")
+        Etherbotix.__init__(self, ip, port)
+        self.publisher = rospy.Publisher("nmea_sentence", Sentence, queue_size=10)
+        self.frame_id = rospy.get_param("~frame_id", "base_link")
 
     def setup(self):
         # Set baud to 9600, set terminating character to '\n' (10)
-        self.etherbotix.write(253, self.etherbotix.P_USART_BAUD, [207, 10])
+        self.write(253, self.P_USART_BAUD, [207, 10])
 
     def run(self):
         self.setup()
-        while True:
-            packet = self.etherbotix.getPacket()
+        while not rospy.is_shutdown():
+            packet = self.getPacket()
             if packet:
                 s = Sentence()
                 s.header.frame_id = self.frame_id
-                s.header.stamp = self.get_clock().now().to_msg()
-                s.sentence = str(packet.params.rstrip())
+                s.header.stamp = rospy.Time.now()
+                s.sentence = packet.params.rstrip()
                 self.publisher.publish(s)
-                rclpy.spin_once(self, timeout_sec=0)
 
 
 def main(args=None):
-    rclpy.init(args=args)
+    rospy.init_node("gps_publisher")
     g = GPSPublisher()
-    try:
-        g.run()
-    except KeyboardInterrupt:
-        pass
+    g.run()
 
 
 if __name__ == "__main__":
