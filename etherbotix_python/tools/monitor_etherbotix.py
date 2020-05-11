@@ -37,10 +37,10 @@ import curses
 from etherbotix_python.ax12 import AX_READ_DATA
 from etherbotix_python.etherbotix import Etherbotix
 
-DEFAULT_OK = curses.color_pair(1)
-DEFAULT_ERROR = curses.color_pair(2)
-WHITE_OK = curses.color_pair(3)
-WHITE_ERROR = curses.color_pair(4)
+DEFAULT_OK = 1
+DEFAULT_ERROR = 2
+WHITE_OK = 3
+WHITE_ERROR = 4
 
 
 def main(args=None):
@@ -85,7 +85,7 @@ def main(args=None):
                 screen.addstr(4, 3, "System Time:      %d" % e.system_time)
                 screen.addstr(5, 3, "System Voltage:   ")
                 if (e.system_voltage < 11.0):
-                    screen.addstr(5, 21, "%5.2fV" % e.system_voltage, DEFAULT_ERROR)
+                    screen.addstr(5, 21, "%5.2fV" % e.system_voltage, curses.color_pair(DEFAULT_ERROR))  # noqa: E501
                 else:
                     screen.addstr(5, 21, "%5.2fV" % e.system_voltage)
                 servo_current = (0.7 * servo_current) + (0.3 * e.servo_current)
@@ -104,31 +104,31 @@ def main(args=None):
                 digital_dir += " ".join(["U" if e.user_io_use & (1 << (3 + n)) else "I" if e.digital_dir & (1 << (3 + n)) == 0 else "O" for n in range(5)])  # noqa: E501
                 digital_in = " ".join(["L" if e.digital_in & (1 << n) == 0 else "H" for n in range(8)])  # noqa: E501
                 screen.addstr(14, 3, "Digital    0 1 2 3 4 5 6 7")
-                screen.addstr(15, 3, "Direction: %s" % digital_dir, WHITE_OK)
-                screen.addstr(16, 3, "Value:     %s" % digital_in, WHITE_OK)
+                screen.addstr(15, 3, "Direction: %s" % digital_dir, curses.color_pair(WHITE_OK))
+                screen.addstr(16, 3, "Value:     %s" % digital_in, curses.color_pair(WHITE_OK))
 
                 # Motors & IMU in second column
                 screen.addstr(1, 40, "Motor 1")
-                screen.addstr(2, 40, "Position:      %15d" % e.motor1_pos, WHITE_OK)
-                screen.addstr(3, 40, "Velocity:      %15d" % e.motor1_vel, WHITE_OK)
+                screen.addstr(2, 40, "Position:      %15d" % e.motor1_pos, curses.color_pair(WHITE_OK))  # noqa: E501
+                screen.addstr(3, 40, "Velocity:      %15d" % e.motor1_vel, curses.color_pair(WHITE_OK))  # noqa: E501
                 screen.addstr(5, 40, "Motor 2")
-                screen.addstr(6, 40, "Position:      %15d" % e.motor2_pos, WHITE_OK)
-                screen.addstr(7, 40, "Velocity:      %15d" % e.motor2_vel, WHITE_OK)
+                screen.addstr(6, 40, "Position:      %15d" % e.motor2_pos, curses.color_pair(WHITE_OK))  # noqa: E501
+                screen.addstr(7, 40, "Velocity:      %15d" % e.motor2_vel, curses.color_pair(WHITE_OK))  # noqa: E501
                 screen.addstr(9, 40, "IMU (v%d)  " % e.getImuVersion())
                 if (e.imu_flags & 0xE0) != 0xE0:
-                    screen.addstr(9, 65, "ERROR", DEFAULT_ERROR)
+                    screen.addstr(9, 65, "ERROR", curses.color_pair(DEFAULT_ERROR))
                 else:
-                    screen.addstr(9, 65, "     ", DEFAULT_ERROR)
+                    screen.addstr(9, 65, "     ", curses.color_pair(DEFAULT_ERROR))
                 screen.addstr(10, 40, "Accel:  %6d  %6d  %6d" %
-                              (e.accel_x, e.accel_y, e.accel_z), WHITE_OK)
+                              (e.accel_x, e.accel_y, e.accel_z), curses.color_pair(WHITE_OK))
                 screen.addstr(11, 40, "Gyro:   %6d  %6d  %6d" %
-                              (e.gyro_x, e.gyro_y, e.gyro_z), WHITE_OK)
+                              (e.gyro_x, e.gyro_y, e.gyro_z), curses.color_pair(WHITE_OK))
                 screen.addstr(12, 40, "Mag:    %6d  %6d  %6d" %
-                              (e.mag_x, e.mag_y, e.mag_z), WHITE_OK)
+                              (e.mag_x, e.mag_y, e.mag_z), curses.color_pair(WHITE_OK))
 
-                screen.addstr(14, 40, "Analog 0:      %15d" % e.a0, WHITE_OK)
-                screen.addstr(15, 40, "Analog 1:      %15d" % e.a1, WHITE_OK)
-                screen.addstr(16, 40, "Analog 2:      %15d" % e.a2, WHITE_OK)
+                screen.addstr(14, 40, "Analog 0:      %15d" % e.a0, curses.color_pair(WHITE_OK))
+                screen.addstr(15, 40, "Analog 1:      %15d" % e.a1, curses.color_pair(WHITE_OK))
+                screen.addstr(16, 40, "Analog 2:      %15d" % e.a2, curses.color_pair(WHITE_OK))
 
             screen.refresh()
             time.sleep(0.1)
