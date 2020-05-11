@@ -46,8 +46,8 @@ class GPSPublisher(Node):
     def __init__(self, ip="192.168.0.42", port=6707):
         super().__init__("gps_publisher")
         self.etherbotix = Etherbotix(ip, port)
+        self.declare_parameter("frame_id", "base_link",)
         self.publisher = self.create_publisher(Sentence, "nmea_sentence", 10)
-        self.frame_id = self.get_parameter_or("~frame_id", "base_link")
 
     def setup(self):
         # Set baud to 9600, set terminating character to '\n' (10)
@@ -59,7 +59,7 @@ class GPSPublisher(Node):
             packet = self.etherbotix.getPacket()
             if packet:
                 s = Sentence()
-                s.header.frame_id = self.frame_id
+                s.header.frame_id = self.get_parameter("frame_id").value
                 s.header.stamp = self.get_clock().now().to_msg()
                 s.sentence = str(packet.params.rstrip())
                 self.publisher.publish(s)
