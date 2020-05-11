@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
-# Copyright (c) 2014-2020, Michael E. Ferguson
+# Copyright (c) 2014-2020 Michael Ferguson
+# Copyright (c) 2013 Vanadium Labs LLC.
 # All rights reserved.
 #
 # Software License Agreement (BSD License 2.0)
@@ -32,53 +33,39 @@
 # ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
-import binascii
-import sys
-import tftpy
-import time
+import rospy
+from nmea_msgs.msg import Sentence
 from etherbotix_python.etherbotix import Etherbotix
 
 
+class GPSPublisher(Etherbotix):
+    """Publishes GPS sentences from USART3."""
+
+    def __init__(self, ip="192.168.0.42", port=6707):
+        Etherbotix.__init__(self, ip, port)
+        self.publisher = rospy.Publisher("nmea_sentence", Sentence, queue_size=10)
+        self.frame_id = rospy.get_param("~frame_id", "base_link")
+
+    def setup(self):
+        # Set baud to 9600, set terminating character to '\n' (10)
+        self.write(253, self.P_USART_BAUD, [207, 10])
+
+    def run(self):
+        self.setup()
+        while not rospy.is_shutdown():
+            packet = self.getPacket()
+            if packet:
+                s = Sentence()
+                s.header.frame_id = self.frame_id
+                s.header.stamp = rospy.Time.now()
+                s.sentence = packet.params.rstrip()
+                self.publisher.publish(s)
+
+
 def main(args=None):
-    if len(sys.argv) < 2:
-        print("usage: upload.py <file.bin>")
-        exit(-1)
-
-    # Load File
-    firmware = open(sys.argv[1], "rb").read()
-
-    # Compute length (in words)
-    length = len(firmware) / 4
-
-    # Compute crc32
-    crc32 = binascii.crc32(firmware)
-
-    # Insert metadata
-    metadata = [0 for i in range(512)]
-    metadata[0] = crc32 & 0xff
-    metadata[1] = (crc32 >> 8) & 0xff
-    metadata[2] = (crc32 >> 16) & 0xff
-    metadata[3] = (crc32 >> 24) & 0xff
-    metadata[4] = length & 0xff
-    metadata[5] = (length >> 8) & 0xff
-    metadata[6] = (length >> 16) & 0xff
-    metadata[7] = (length >> 24) & 0xff
-    metadata = "".join(chr(x) for x in metadata)
-    firmware = metadata + firmware
-
-    # Newer versions of tftpy will allow passing in a StringIO,
-    # but even Ubuntu Trusty does not have this version :(
-    open("/tmp/firmware.bin", "wb").write(firmware)
-
-    # Reboot the board
-    e = Etherbotix()
-    boot = [ord(c) for c in "BOOT"]
-    e.write(253, 192, boot)
-    time.sleep(3.0)
-
-    # Upload using TFTP, set large timeout
-    client = tftpy.TftpClient("192.168.0.42", 69)
-    client.upload("firmware", "/tmp/firmware.bin", timeout=30)
+    rospy.init_node("gps_publisher")
+    g = GPSPublisher()
+    g.run()
 
 
 if __name__ == "__main__":

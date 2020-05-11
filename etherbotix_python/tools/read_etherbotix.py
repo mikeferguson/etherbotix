@@ -2,34 +2,41 @@
 
 # Copyright (c) 2014-2018 Michael Ferguson
 # Copyright (c) 2008-2013 Vanadium Labs LLC.
-# All right reserved.
+# All rights reserved.
+#
+# Software License Agreement (BSD License 2.0)
 #
 # Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions are met:
+# modification, are permitted provided that the following conditions
+# are met:
 #
-#   * Redistributions of source code must retain the above copyright
-#     notice, this list of conditions and the following disclaimer.
-#   * Redistributions in binary form must reproduce the above copyright
-#     notice, this list of conditions and the following disclaimer in the
-#     documentation and/or other materials provided with the distribution.
-#   * Neither the name of Vanadium Labs LLC nor the names of its
-#     contributors may be used to endorse or promote products derived
-#     from this software without specific prior written permission.
+#  * Redistributions of source code must retain the above copyright
+#    notice, this list of conditions and the following disclaimer.
+#  * Redistributions in binary form must reproduce the above
+#    copyright notice, this list of conditions and the following
+#    disclaimer in the documentation and/or other materials provided
+#    with the distribution.
+#  * Neither the name of the copyright holder nor the names of its
+#    contributors may be used to endorse or promote products derived
+#    from this software without specific prior written permission.
 #
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
-# ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-# WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-# DISCLAIMED. IN NO EVENT SHALL VANADIUM LABS BE LIABLE FOR ANY DIRECT, INDIRECT,
-# INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
-# LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA,
-# OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
-# LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
-# OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
-# ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+# "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+# LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+# FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
+# COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+# INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+# BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+# LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+# CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+# LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
+# ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+# POSSIBILITY OF SUCH DAMAGE.
 
 import time
-from etherbotix_python.ax12 import *
-from etherbotix_python.etherbotix import *
+from etherbotix_python.ax12 import AX_READ_DATA
+from etherbotix_python.etherbotix import Etherbotix
+
 
 def get_baud_str(baud):
     if baud == 1:
@@ -53,14 +60,14 @@ def get_baud_str(baud):
     else:
         return "UNKNOWN"
 
+
 def main(args=None):
     e = Etherbotix()
-    t = time.time()
 
     pkt = None
-    while pkt == None:
+    while pkt is None:
         pkt = e.execute(253, AX_READ_DATA, [0, 128])
-        if pkt == None:
+        if pkt is None:
             print("Waiting for EtherbotiX response!")
             time.sleep(0.5)
     e.updateFromPacket(pkt)
@@ -76,20 +83,20 @@ def main(args=None):
     print("Digital Dir:    %d" % e.digital_dir)
     print("Alarm LED:      %d" % e.led)
     print("System Voltage: %f V" % e.system_voltage)
-    print("Servo Current:  %f A (%fW)" % (e.servo_current, e.servo_current*e.system_voltage))
-    print("Aux Current:    %f A (%fW)" % (e.aux_current, e.aux_current*e.system_voltage))
+    print("Servo Current:  %f A (%fW)" % (e.servo_current, e.servo_current * e.system_voltage))
+    print("Aux Current:    %f A (%fW)" % (e.aux_current, e.aux_current * e.system_voltage))
     print("Motor 1")
     print("  Velocity:     %d" % e.motor1_vel)
     print("  Position:     %d" % e.motor1_pos)
     print("  Current:      %d A" % e.motor1_current)
     print("  Gains:        Kp: %f, Kd: %f, Ki: %f, Windup: %f" %
-        (e.motor1_kp, e.motor1_kd, e.motor1_ki, e.motor1_windup))
+          (e.motor1_kp, e.motor1_kd, e.motor1_ki, e.motor1_windup))
     print("Motor 2")
     print("  Velocity:     %d" % e.motor2_vel)
     print("  Position:     %d" % e.motor2_pos)
     print("  Current:      %d A" % e.motor2_current)
     print("  Gains:        Kp: %f, Kd: %f, Ki: %f, Windup: %f" %
-        (e.motor2_kp, e.motor2_kd, e.motor2_ki, e.motor2_windup))
+          (e.motor2_kp, e.motor2_kd, e.motor2_ki, e.motor2_windup))
     print("Motor Period:   %d ms" % e.motor_period)
     print("Motor Max Step: %d" % e.motor_max_step)
     print("IMU")
@@ -100,5 +107,6 @@ def main(args=None):
     if e.tim12_mode == 1:
         print("Tim12 Count:    %d" % e.tim12_count)
 
-if __name__=="__main__":
+
+if __name__ == "__main__":
     main()

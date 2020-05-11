@@ -20,12 +20,15 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
+            'driver = etherbotix_python.driver:main',
             'get_trace = etherbotix_python.tools.get_trace:main',
+            'gps_publisher = etherbotix_python.gps_publisher:main',
             'monitor_etherbotix = etherbotix_python.tools.monitor_etherbotix:main',
             'read_etherbotix = etherbotix_python.tools.read_etherbotix:main',
             'read_servo = etherbotix_python.tools.read_servo:main',
             'read_unique_id = etherbotix_python.tools.read_unique_id:main',
             'reboot = etherbotix_python.tools.reboot:main',
+            'simple_teleop = etherbotix_python.simple_teleop:main',
             'upload = etherbotix_python.tools.upload:main',
         ],
     },

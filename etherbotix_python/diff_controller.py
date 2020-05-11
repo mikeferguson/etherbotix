@@ -1,37 +1,40 @@
-#!/usr/bin/env python
-
 # Copyright (c) 2014-2020 Michael E. Ferguson
 # Copyright (c) 2010-2011 Vanadium Labs LLC.
-# All right reserved.
+# All rights reserved.
+#
+# Software License Agreement (BSD License 2.0)
 #
 # Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions are met:
+# modification, are permitted provided that the following conditions
+# are met:
 #
-#   * Redistributions of source code must retain the above copyright
-#     notice, this list of conditions and the following disclaimer.
-#   * Redistributions in binary form must reproduce the above copyright
-#     notice, this list of conditions and the following disclaimer in the
-#     documentation and/or other materials provided with the distribution.
-#   * Neither the name of Vanadium Labs LLC nor the names of its
-#     contributors may be used to endorse or promote products derived
-#     from this software without specific prior written permission.
+#  * Redistributions of source code must retain the above copyright
+#    notice, this list of conditions and the following disclaimer.
+#  * Redistributions in binary form must reproduce the above
+#    copyright notice, this list of conditions and the following
+#    disclaimer in the documentation and/or other materials provided
+#    with the distribution.
+#  * Neither the name of the copyright holder nor the names of its
+#    contributors may be used to endorse or promote products derived
+#    from this software without specific prior written permission.
 #
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
-# ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-# WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-# DISCLAIMED. IN NO EVENT SHALL VANADIUM LABS BE LIABLE FOR ANY DIRECT, INDIRECT,
-# INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
-# LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA,
-# OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
-# LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
-# OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
-# ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+# "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+# LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+# FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
+# COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+# INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+# BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+# LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+# CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+# LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
+# ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+# POSSIBILITY OF SUCH DAMAGE.
 
 # Author: Michael E. Ferguson
 
-## @file diff_controller.py Differential drive controller for Etherbotix.
-
 from math import sin, cos, pi
+import struct
 
 import rospy
 from tf.broadcaster import TransformBroadcaster
@@ -39,20 +42,21 @@ from tf.broadcaster import TransformBroadcaster
 from geometry_msgs.msg import Quaternion
 from geometry_msgs.msg import Twist
 from nav_msgs.msg import Odometry
-from diagnostic_msgs.msg import *
+from diagnostic_msgs.msg import DiagnosticStatus, KeyValue
 
-from .ax12 import *
-from .controllers import *
+from etherbotix_python.controllers import Controller
 
-## @brief Used to compare floating point parameters
+
 def almost_equal(f1, f2):
+    """Compare floating point parameters."""
     diff = float(f1) - float(f2)
     if abs(diff) < 0.0001:
         return True
     return False
 
-## @brief Controller to handle movement & odometry feedback for a differential drive mobile base.
+
 class DiffController(Controller):
+    """Controller for a differential drive mobile base."""
 
     def __init__(self, node, name):
         Controller.__init__(self, node, name)
@@ -134,8 +138,9 @@ class DiffController(Controller):
         # Subscribe to command
         rospy.Subscriber("cmd_vel", Twist, self.cmdVelCb)
 
-        rospy.loginfo("Started DiffController ("+name+").")
-        rospy.loginfo("  Geometry: " + str(self.base_width) + "m wide, " + str(self.ticks_meter) + " ticks/m.")
+        rospy.loginfo("Started DiffController (" + name + ").")
+        rospy.loginfo("  Geometry: " + str(self.base_width) + "m wide, " +
+                      str(self.ticks_meter) + " ticks/m.")
 
     def update(self):
         now = rospy.Time.now()
@@ -144,61 +149,55 @@ class DiffController(Controller):
         elapsed = elapsed.to_sec()
 
         # Do odometry first
-        if self.node.sim:
-            # If simulated, forward simulate trajectory
-            x = cos(self.th)*self.dx*elapsed
-            y = -sin(self.th)*self.dx*elapsed
-            self.x += cos(self.th)*self.dx*elapsed
-            self.y += sin(self.th)*self.dx*elapsed
-            self.th += self.dr*elapsed
+        try:
+            left = self.node.etherbotix.motor1_pos
+            right = self.node.etherbotix.motor2_pos
+        except AttributeError:
+            # board is not yet updated
+            return False
+
+        # Calculate position
+        if self.enc_left is None:
+            d_left = 0
+            d_right = 0
         else:
-            try:
-                left = self.node.etherbotix.motor1_pos
-                right = self.node.etherbotix.motor2_pos
-            except AttributeError:
-                # board is not yet updated
-                return False
+            d_left = (left - self.enc_left) / self.ticks_meter
+            d_right = (right - self.enc_right) / self.ticks_meter
+        self.enc_left = left
+        self.enc_right = right
 
-            # calculate position
-            if self.enc_left == None:
-                d_left = 0
-                d_right = 0
-            else:
-                d_left = (left - self.enc_left)/self.ticks_meter
-                d_right = (right - self.enc_right)/self.ticks_meter
-            self.enc_left = left
-            self.enc_right = right
+        d = (d_left + d_right) / 2
+        th = (d_right - d_left) / self.base_width
 
-            d = (d_left+d_right)/2
-            th = (d_right-d_left)/self.base_width
+        # Calculate velocity
+        l_vel = self.node.etherbotix.motor1_vel / self.ticks_meter
+        r_vel = self.node.etherbotix.motor2_vel / self.ticks_meter
+        self.dx = (l_vel + r_vel) / 2 * (1000.0 / self.period)
+        self.dr = (r_vel - l_vel) / self.base_width * (1000.0 / self.period)
 
-            # calculate velocity
-            l_vel = self.node.etherbotix.motor1_vel / self.ticks_meter
-            r_vel = self.node.etherbotix.motor2_vel / self.ticks_meter
-            self.dx = (l_vel+r_vel)/2 * (1000.0/self.period)
-            self.dr = (r_vel-l_vel)/self.base_width * (1000.0/self.period)
+        if (d != 0):
+            x = cos(th) * d
+            y = -sin(th) * d
+            self.x = self.x + (cos(self.th) * x - sin(self.th) * y)
+            self.y = self.y + (sin(self.th) * x + cos(self.th) * y)
+        if (th != 0):
+            self.th = self.th + th
 
-            if (d != 0):
-                x = cos(th)*d
-                y = -sin(th)*d
-                self.x = self.x + (cos(self.th)*x - sin(self.th)*y)
-                self.y = self.y + (sin(self.th)*x + cos(self.th)*y)
-            if (th != 0):
-                self.th = self.th + th
-
-            # Update joint_states publisher
-            self.joint_positions = [self.enc_left/self.ticks_rotation, self.enc_right/self.ticks_rotation]
-            self.joint_velocities = [l_vel * (1000.0/self.period), r_vel * (1000.0/self.period)]
-            if len(self.joint_names) == 4:
-                self.joint_positions.extend(self.joint_positions)
-                self.joint_velocities.extend(self.joint_velocities)
+        # Update joint_states publisher
+        self.joint_positions = [self.enc_left / self.ticks_rotation,
+                                self.enc_right / self.ticks_rotation]
+        self.joint_velocities = [l_vel * (1000.0 / self.period),
+                                 r_vel * (1000.0 / self.period)]
+        if len(self.joint_names) == 4:
+            self.joint_positions.extend(self.joint_positions)
+            self.joint_velocities.extend(self.joint_velocities)
 
         # Publish or perish
         quaternion = Quaternion()
         quaternion.x = 0.0
         quaternion.y = 0.0
-        quaternion.z = sin(self.th/2)
-        quaternion.w = cos(self.th/2)
+        quaternion.z = sin(self.th / 2)
+        quaternion.w = cos(self.th / 2)
         if self.odomBroadcaster:
             self.odomBroadcaster.sendTransform(
                 (self.x, self.y, 0),
@@ -206,7 +205,7 @@ class DiffController(Controller):
                 rospy.Time.now(),
                 self.base_frame_id,
                 self.odom_frame_id
-                )
+            )
 
         odom = Odometry()
         odom.header.stamp = now
@@ -234,7 +233,9 @@ class DiffController(Controller):
 
         # Update motors if real hardware and PID is correct
         if not self.node.sim and self.updateParams():
-            max_accel = int(self.accel_limit * self.ticks_meter * self.dt.to_sec())
+            max_accel = int(self.accel_limit *
+                            self.ticks_meter *
+                            self.dt.to_sec())
 
             # Limit left side acceleration
             if self.v_left < self.v_des_left:
@@ -259,19 +260,26 @@ class DiffController(Controller):
             # Send commands
             self.updateControls(self.v_left, self.v_right)
 
-    ## @brief On shutdown, need to stop base.
     def shutdown(self):
-        self.updateControls(0,0)
+        """On shutdown, need to stop base."""
+        self.updateControls(0, 0)
 
-    ## @brief ROS callback to set new velocity.
-    ## @param req A geometry_msgs/Twist command.
     def cmdVelCb(self, req):
-        # set motor speeds in ticks per period
-        self.v_des_left = int( ((req.linear.x - (req.angular.z * self.base_width/2.0)) * self.ticks_meter) / (1000.0/self.period))
-        self.v_des_right = int( ((req.linear.x + (req.angular.z * self.base_width/2.0)) * self.ticks_meter) / (1000.0/self.period))
+        """ROS callback to set new velocity."""
+        # Get speeds in m/s
+        left = req.linear.x - (req.angular.z * self.base_width / 2.0)
+        right = req.linear.x + (req.angular.z * self.base_width / 2.0)
+        # Convert to ticks/sec
+        left *= self.ticks_meter
+        right *= self.ticks_meter
+        # Convert to ticks/period
+        left /= 1000.0 / self.period
+        right /= 1000.0 / self.perdiod
+        # Store with timestamp
+        self.v_des_left = left
+        self.v_des_right = right
         self.last_cmd = rospy.Time.now()
 
-    ## @brief Get diagnostics message.
     def getDiagnostics(self):
         msg = DiagnosticStatus()
         msg.name = self.name
@@ -284,9 +292,12 @@ class DiffController(Controller):
         msg.values.append(KeyValue("dR", str(self.dr)))
         return msg
 
-    ## @brief Make sure the parameters on robot match our params.
-    ## @returns True if parameters match.
     def updateParams(self):
+        """
+        Make sure the parameters on robot match our params.
+
+        Returns true if parameters match.
+        """
         # Need to check PID params
         if not almost_equal(self.node.etherbotix.motor1_kp, self.Kp) or \
            not almost_equal(self.node.etherbotix.motor1_kd, self.Kd) or \
@@ -297,19 +308,23 @@ class DiffController(Controller):
            not almost_equal(self.node.etherbotix.motor2_ki, self.Ki) or \
            not almost_equal(self.node.etherbotix.motor2_windup, self.Kw):
             params = struct.pack("<ffff", self.Kp, self.Kd, self.Ki, self.Kw)
-            params = params + params # both sides are the same
+            params = params + params  # both sides are the same
             params = [ord(x) for x in params]
-            self.node.etherbotix.write(253, self.node.etherbotix.P_MOTOR1_KP, params, ret=False)
+            self.node.etherbotix.write(253, self.node.etherbotix.P_MOTOR1_KP,
+                                       params, ret=False)
             return False
         # Need to check motor period
         if self.node.etherbotix.motor_period != self.period:
-            self.node.etherbotix.write(253, self.node.etherbotix.P_MOTOR_PERIOD, [self.period,] , ret=False)
+            self.node.etherbotix.write(253,
+                                       self.node.etherbotix.P_MOTOR_PERIOD,
+                                       [self.period, ], ret=False)
             return False
         # Params are up to date
         return True
 
-    ## @brief Update controls
     def updateControls(self, left, right):
+        """Update controls."""
         params = struct.pack("<hh", left, right)
         params = [ord(x) for x in params]
-        self.node.etherbotix.write(253, self.node.etherbotix.P_MOTOR1_VEL, params, ret=False)
+        self.node.etherbotix.write(253, self.node.etherbotix.P_MOTOR1_VEL,
+                                   params, ret=False)

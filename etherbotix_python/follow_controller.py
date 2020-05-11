@@ -1,35 +1,37 @@
-#!/usr/bin/env python
-
-# Copyright (c) 2014 Michael Ferguson
+# Copyright (c) 2014-2020 Michael E. Ferguson
 # Copyright (c) 2011 Vanadium Labs LLC.
-# All right reserved.
+# All rights reserved.
+#
+# Software License Agreement (BSD License 2.0)
 #
 # Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions are met:
+# modification, are permitted provided that the following conditions
+# are met:
 #
-#   * Redistributions of source code must retain the above copyright
-#     notice, this list of conditions and the following disclaimer.
-#   * Redistributions in binary form must reproduce the above copyright
-#     notice, this list of conditions and the following disclaimer in the
-#     documentation and/or other materials provided with the distribution.
-#   * Neither the name of Vanadium Labs LLC nor the names of its
-#     contributors may be used to endorse or promote products derived
-#     from this software without specific prior written permission.
+#  * Redistributions of source code must retain the above copyright
+#    notice, this list of conditions and the following disclaimer.
+#  * Redistributions in binary form must reproduce the above
+#    copyright notice, this list of conditions and the following
+#    disclaimer in the documentation and/or other materials provided
+#    with the distribution.
+#  * Neither the name of the copyright holder nor the names of its
+#    contributors may be used to endorse or promote products derived
+#    from this software without specific prior written permission.
 #
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
-# ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-# WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-# DISCLAIMED. IN NO EVENT SHALL VANADIUM LABS BE LIABLE FOR ANY DIRECT, INDIRECT,
-# INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
-# LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA,
-# OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
-# LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
-# OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
-# ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+# "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+# LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+# FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
+# COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+# INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+# BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+# LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+# CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+# LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
+# ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+# POSSIBILITY OF SUCH DAMAGE.
 
 # Author: Michael Ferguson
-
-## @file follow_controller.py Controller for a kinematic chain.
 
 import rospy
 import actionlib
@@ -38,33 +40,35 @@ from scipy.interpolate import interp1d
 
 from control_msgs.msg import FollowJointTrajectoryAction
 from trajectory_msgs.msg import JointTrajectory
-from diagnostic_msgs.msg import *
+from diagnostic_msgs.msg import DiagnosticStatus, KeyValue
 
-from .ax12 import *
-from .controllers import *
+from etherbotix_python.controllers import Controller
+
 
 class FollowController(Controller):
-    """ A controller for joint chains, exposing a FollowJointTrajectory action. """
+    """A controller for joint chains, exposing a FollowJointTrajectory action."""
 
     def __init__(self, node, name):
         Controller.__init__(self, node, name)
         self.interpolating = 0
 
         # Parameters: rates and joints
-        self.rate = rospy.get_param('~controllers/'+name+'/rate', 50.0)
-        self.joints = rospy.get_param('~controllers/'+name+'/joints')
+        ns = "~controllers/" + name + "/"
+        self.rate = rospy.get_param(ns + "rate", 50.0)
+        self.joints = rospy.get_param(ns + "joints")
         for joint in self.joints:
             self.node.joints[joint].controller = self
 
         # Action server
-        name = rospy.get_param('~controllers/'+name+'/action_name','follow_joint_trajectory')
-        self.server = actionlib.SimpleActionServer(name, FollowJointTrajectoryAction, execute_cb=self.actionCb, auto_start=False)
+        name = rospy.get_param(ns + "action_name", 'follow_joint_trajectory')
+        self.server = actionlib.SimpleActionServer(name, FollowJointTrajectoryAction,
+                                                   execute_cb=self.actionCb, auto_start=False)
 
         # Good old trajectory
-        rospy.Subscriber(self.name+'/command', JointTrajectory, self.commandCb)
+        rospy.Subscriber(self.name + "/command", JointTrajectory, self.commandCb)
         self.splines = None
 
-        rospy.loginfo("Started FollowController ("+self.name+"). Joints: " + str(self.joints))
+        rospy.loginfo("Started FollowController (" + self.name + "). Joints: " + str(self.joints))
 
     def startup(self):
         self.server.start()
@@ -76,29 +80,21 @@ class FollowController(Controller):
         if set(self.joints) != set(traj.joint_names):
             for j in self.joints:
                 if j not in traj.joint_names:
-                    msg = "Trajectory joint names does not match action controlled joints." + str(traj.joint_names)
+                    msg = "Joint names do not match action controlled joints."
                     rospy.logerr(msg)
                     self.server.set_aborted(text=msg)
                     return
             rospy.logwarn("Extra joints in trajectory")
 
         if not traj.points:
-            msg = "Trajectory empy."
-            rospy.logerr(msg)
-            self.server.set_aborted(text=msg)
-            return
-
-        try:
-            indexes = [traj.joint_names.index(joint) for joint in self.joints]
-        except ValueError as val:
-            msg = "Trajectory invalid."
+            msg = "Trajectory empty."
             rospy.logerr(msg)
             self.server.set_aborted(text=msg)
             return
 
         if self.setupTrajectory(traj):
             r = rospy.Rate(self.rate)
-            while self.splines != None:
+            while self.splines is not None:
                 # TODO publish feedback
                 r.sleep()
             self.server.set_succeeded()
@@ -106,11 +102,11 @@ class FollowController(Controller):
             self.server.set_aborted(text="Execution setup failed.")
 
         rospy.loginfo(self.name + ": Done.")
-    
+
     def commandCb(self, msg):
         # don't execute if executing an action
         if self.server.is_active():
-            rospy.loginfo(self.name+": Received trajectory, but action is active")
+            rospy.loginfo(self.name + ": Received trajectory, but action is active")
             return
         self.setupTrajectory(msg)
 
@@ -144,7 +140,7 @@ class FollowController(Controller):
                     end_f = end
                 x.append(end)
                 y.append(point.positions[i])
-            splines.append(interp1d(x,y))
+            splines.append(interp1d(x, y))
         self.end_f = end_f
 
         # Wait for splines to be valid
@@ -168,11 +164,11 @@ class FollowController(Controller):
                 joint.setControlOutput(self.splines[i](now))
 
     def active(self):
-        """ Is controller overriding servo internal control? """
-        return self.splines != None
+        """Is controller overriding servo internal control."""
+        return self.splines is not None
 
     def getDiagnostics(self):
-        """ Get a diagnostics status. """
+        """Get a diagnostics status."""
         msg = DiagnosticStatus()
         msg.name = self.name
         msg.level = DiagnosticStatus.OK
@@ -182,4 +178,3 @@ class FollowController(Controller):
         else:
             msg.values.append(KeyValue("State", "Not Active"))
         return msg
-
