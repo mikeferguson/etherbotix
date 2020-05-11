@@ -1,7 +1,10 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
-# Copyright (c) 2014, Michael E. Ferguson
+# Copyright (c) 2014-2020 Michael Ferguson
+# Copyright (c) 2008-2013 Vanadium Labs LLC.
 # All rights reserved.
+#
+# Software License Agreement (BSD License 2.0)
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -13,6 +16,9 @@
 #    copyright notice, this list of conditions and the following
 #    disclaimer in the documentation and/or other materials provided
 #    with the distribution.
+#  * Neither the name of the copyright holder nor the names of its
+#    contributors may be used to endorse or promote products derived
+#    from this software without specific prior written permission.
 #
 # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
 # "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
@@ -27,48 +33,17 @@
 # ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
-import binascii
-import sys
-import tftpy
-import time
-from etherbotix_python.etherbotix import *
+from etherbotix_python.etherbotix import Etherbotix
 
-if len(sys.argv) < 2:
-    print("usage: upload.py <file.bin>")
-    exit(-1)
 
-# Load File
-firmware = open(sys.argv[1], "rb").read()
+def main(args=None):
+    e = Etherbotix()
+    raw_id = e.read(253, e.P_DEVICE_UNIQUE_ID, 12)
+    id = 0
+    for i in range(len(raw_id)):
+        id += raw_id[i] << (8 * i)
+    print(hex(id)[2:].replace("L", ""))
 
-# Compute length (in words)
-length = len(firmware)/4
 
-# Compute crc32
-crc32 = binascii.crc32(firmware)
-
-# Insert metadata
-metadata = [0 for i in range(512)]
-metadata[0] = crc32 & 0xff
-metadata[1] = (crc32>>8) & 0xff
-metadata[2] = (crc32>>16) & 0xff
-metadata[3] = (crc32>>24) & 0xff
-metadata[4] = length & 0xff
-metadata[5] = (length>>8) & 0xff
-metadata[6] = (length>>16) & 0xff
-metadata[7] = (length>>24) & 0xff
-metadata = "".join(chr(x) for x in metadata)
-firmware = metadata + firmware
-
-# Newer versions of tftpy will allow passing in a StringIO,
-# but even Ubuntu Trusty does not have this version :(
-open("/tmp/firmware.bin", "wb").write(firmware)
-
-# Reboot the board
-e = Etherbotix()
-boot = [ord(c) for c in "BOOT"]
-e.write(253, 192, boot)
-time.sleep(3.0)
-
-# Upload using TFTP, set large timeout
-client = tftpy.TftpClient("192.168.0.42", 69)
-client.upload("firmware", "/tmp/firmware.bin", timeout=30)
+if __name__ == "__main__":
+    main()

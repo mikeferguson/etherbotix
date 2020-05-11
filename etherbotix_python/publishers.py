@@ -1,50 +1,53 @@
-#!/usr/bin/env python
-
-# Copyright (c) 2014-2018 Michael Ferguson
+# Copyright (c) 2014-2020 Michael E. Ferguson
 # Copyright (c) 2011 Vanadium Labs LLC.
-# All right reserved.
+# All rights reserved.
+#
+# Software License Agreement (BSD License 2.0)
 #
 # Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions are met:
+# modification, are permitted provided that the following conditions
+# are met:
 #
-#   * Redistributions of source code must retain the above copyright
-#     notice, this list of conditions and the following disclaimer.
-#   * Redistributions in binary form must reproduce the above copyright
-#     notice, this list of conditions and the following disclaimer in the
-#     documentation and/or other materials provided with the distribution.
-#   * Neither the name of Vanadium Labs LLC nor the names of its
-#     contributors may be used to endorse or promote products derived
-#     from this software without specific prior written permission.
+#  * Redistributions of source code must retain the above copyright
+#    notice, this list of conditions and the following disclaimer.
+#  * Redistributions in binary form must reproduce the above
+#    copyright notice, this list of conditions and the following
+#    disclaimer in the documentation and/or other materials provided
+#    with the distribution.
+#  * Neither the name of the copyright holder nor the names of its
+#    contributors may be used to endorse or promote products derived
+#    from this software without specific prior written permission.
 #
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
-# ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-# WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-# DISCLAIMED. IN NO EVENT SHALL VANADIUM LABS BE LIABLE FOR ANY DIRECT, INDIRECT,
-# INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
-# LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA,
-# OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
-# LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
-# OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
-# ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+# "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+# LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+# FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
+# COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+# INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+# BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+# LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+# CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+# LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
+# ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+# POSSIBILITY OF SUCH DAMAGE.
 
 # Author: Michael E. Ferguson
-
-## @file publishers.py Publishers of ROS data.
 
 import rospy
 from diagnostic_msgs.msg import DiagnosticArray, DiagnosticStatus, KeyValue
 from geometry_msgs.msg import Vector3Stamped
 from sensor_msgs.msg import JointState, Imu
 
-## @brief Publishes diagnostics at some update rate
+
 class DiagnosticsPublisher:
+    """Publishes diagnostics at some update rate."""
 
     def __init__(self):
-        self.t_delta = rospy.Duration(1.0/rospy.get_param("~diagnostic_rate", 1.0))
+        self.t_delta = rospy.Duration(1.0 / rospy.get_param("~diagnostic_rate", 1.0))
         self.t_next = rospy.Time.now() + self.t_delta
         self.pub = rospy.Publisher('diagnostics', DiagnosticArray, queue_size=5)
 
-    def update(self, joints, controllers, etherbotix = None):
+    def update(self, joints, controllers, etherbotix=None):
         now = rospy.Time.now()
         if now > self.t_next:
             # Create message
@@ -66,9 +69,8 @@ class DiagnosticsPublisher:
             self.pub.publish(msg)
             self.t_next = now + self.t_delta
 
-    ## @brief Diagnostics generation for Etherbotix.
-    ##        Located here since etherbotix.py is ROS-free.
     def getEtherbotixDiagnostics(self, etherbotix):
+        """Diagnostics generation for Etherbotix."""
         msg = DiagnosticStatus()
         msg.name = "etherbotix"
         msg.level = DiagnosticStatus.OK
@@ -78,16 +80,17 @@ class DiagnosticsPublisher:
         if etherbotix.system_voltage < 10.0:
             msg.level = DiagnosticStatus.ERROR
             msg.message = "Battery depleted!"
-        msg.values.append(KeyValue("Voltage", str(etherbotix.system_voltage)+"V"))
+        msg.values.append(KeyValue("Voltage", str(etherbotix.system_voltage) + "V"))
         # Currents
-        msg.values.append(KeyValue("Servo Current", str(etherbotix.servo_current)+"A"))
-        msg.values.append(KeyValue("Aux. Current", str(etherbotix.aux_current)+"A"))
+        msg.values.append(KeyValue("Servo Current", str(etherbotix.servo_current) + "A"))
+        msg.values.append(KeyValue("Aux. Current", str(etherbotix.aux_current) + "A"))
         msg.values.append(KeyValue("Packets", str(etherbotix.packets_recv)))
         msg.values.append(KeyValue("Packets Bad", str(etherbotix.packets_bad)))
         return msg
 
-## @brief Publishes joint_state messages on every update.
+
 class JointStatePublisher:
+    """Publishes joint_state messages on every update."""
 
     def __init__(self):
         self.pub = rospy.Publisher('joint_states', JointState, queue_size=5)
@@ -108,8 +111,9 @@ class JointStatePublisher:
             msg.velocity += controller.joint_velocities
         self.pub.publish(msg)
 
-## @brief Publisher of IMU data
+
 class ImuPublisher:
+    """Publisher of IMU data."""
 
     def __init__(self):
         # Determine which version of IMU we are using
@@ -127,7 +131,7 @@ class ImuPublisher:
     def publish(self, etherbotix):
         # Can't publish yet if don't know the version of our IMU
         if etherbotix.version > 0 and etherbotix.getImuVersion() == 0:
-           return
+            return
 
         # Need to read params first time we get version
         if self.version == 0:
