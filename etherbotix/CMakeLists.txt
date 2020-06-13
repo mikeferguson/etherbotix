@@ -16,10 +16,37 @@ if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 endif()
 
 # find dependencies
+find_package(Boost REQUIRED system)
 find_package(ament_cmake REQUIRED)
-# uncomment the following section in order to fill in
-# further dependencies manually.
-# find_package(<dependency> REQUIRED)
+find_package(rclcpp REQUIRED)
+find_package(rclcpp_components REQUIRED)
+
+include_directories(
+  include
+  ${Boost_INCLUDE_DIRS}
+)
+
+add_library(etherbotix SHARED
+  src/etherbotix.cpp
+)
+target_link_libraries(etherbotix ${Boost_LIBRARIES})
+ament_target_dependencies(etherbotix
+  rclcpp
+  rclcpp_components
+)
+
+rclcpp_components_register_node(etherbotix
+  PLUGIN "etherboix::Etherbotix"
+  EXECUTABLE etherbotix_driver
+)
+
+install(
+  TARGETS
+    etherbotix
+  ARCHIVE DESTINATION lib
+  LIBRARY DESTINATION lib
+  RUNTIME DESTINATION lib/${PROJECT_NAME}
+)
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
