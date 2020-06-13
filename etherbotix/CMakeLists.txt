@@ -36,7 +36,7 @@ ament_target_dependencies(etherbotix
 )
 
 rclcpp_components_register_node(etherbotix
-  PLUGIN "etherboix::Etherbotix"
+  PLUGIN "etherbotix::Etherbotix"
   EXECUTABLE etherbotix_driver
 )
 
