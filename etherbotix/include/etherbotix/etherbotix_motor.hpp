@@ -32,10 +32,12 @@
 
 #include <string>
 
+#include "robot_controllers_interface/joint_handle.h"
+
 namespace etherbotix
 {
 
-class EtherbotixMotor
+class EtherbotixMotor : public robot_controllers_interface::JointHandle
 {
 public:
   /**
@@ -45,25 +47,22 @@ public:
   EtherbotixMotor(const std::string& name, double ticks_per_radian);
   virtual ~EtherbotixMotor();
 
-  std::string get_name() { return name_; }
+  virtual std::string getName() { return name_; }
 
   /** @brief Get the position in radians. */
-  double get_position() { return position_; }
+  virtual double getPosition() { return position_; }
 
   /** @brief Get the velocity in rad/sec. */
-  double get_velocity() { return velocity_; }
+  virtual double getVelocity() { return velocity_; }
 
   /** @brief Get the motor current in amperes. */
-  float get_current() { return current_; }
+  virtual double getEffort() { return current_; }
 
   /** @brief Send gains to the board. */
-  bool set_gain(float kp, float kd, float ki, float windup);
+  bool set_gains(float kp, float kd, float ki, float windup);
 
   /** @brief Get the gains. Returns false if no comms. */
   bool get_gains(float & kp, float & kd, float & ki, float & windup);
-
-  /** @brief Set a velocity command. */
-  bool set_command(double velocity);
 
   /** @brief Set status read from board. */
   void update_from_packet(int16_t velocity, int32_t position, int16_t current);
@@ -76,6 +75,17 @@ public:
 
   /** @brief Get command packet(s). */
   uint8_t get_packets(uint8_t * buffer, int motor_idx);
+
+  // This is the JointHandle interface
+  virtual void setPosition(double position, double velocity, double effort);
+  virtual void setVelocity(double velocity, double effort);
+  virtual void setEffort(double effort);
+  virtual bool isContinuous() { return true; }
+  virtual double getPositionMin() { return 0.0; }
+  virtual double getPositionMax() { return 0.0; }
+  virtual double getVelocityMax();
+  virtual double getEffortMax() { return 0.0; }
+  virtual void reset() { desired_velocity_ = 0; }
 
 private:
   std::string name_;

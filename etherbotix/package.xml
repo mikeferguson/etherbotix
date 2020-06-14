@@ -5,13 +5,14 @@
   <version>0.0.0</version>
   <description>Drivers for etherbotix board</description>
   <maintainer email="mfergs7@gmail.com">Michael Ferguson</maintainer>
-  <license>TODO: License declaration</license>
+  <license>BSD</license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
 
   <depend>boost</depend><!-- for asio -->
   <depend>rclcpp</depend>
   <depend>rclcpp_components</depend>
+  <depend>robot_controllers_interface</depend>
   <depend>sensor_msgs</depend>
 
   <test_depend>ament_lint_auto</test_depend>

@@ -49,8 +49,9 @@ namespace etherbotix
 Etherbotix::Etherbotix(const rclcpp::NodeOptions & options)
 : rclcpp::Node("etherbotix", options),
   socket_(io_service_),
-  update_timer_(io_service_, boost::posix_time::milliseconds(10)),
+  update_timer_(io_service_, boost::posix_time::milliseconds(100)),
   logger_(rclcpp::get_logger("etherbotix")),
+  initialized_(false),
   version_(-1),
   baud_rate_(-1),
   digital_in_(-1),
@@ -94,8 +95,23 @@ Etherbotix::Etherbotix(const rclcpp::NodeOptions & options)
 
   // Setup motors
   double ticks_per_radian = this->declare_parameter<double>("ticks_per_radian", 1.0);
-  left_motor_.reset(new EtherbotixMotor("base_l_wheel_joint", ticks_per_radian));
-  right_motor_.reset(new EtherbotixMotor("base_r_wheel_joint", ticks_per_radian));
+  double kp = this->declare_parameter<double>("motor_kp", 1.0);
+  double kd = this->declare_parameter<double>("motor_kd", 0.0);
+  double ki = this->declare_parameter<double>("motor_ki", 0.1);
+  double kw = this->declare_parameter<double>("motor_kw", 400.0);
+  RCLCPP_INFO(logger_, "Setting gains to %f %f %f %f", kp, kd, ki, kw);
+  left_motor_.reset(new EtherbotixMotor("lf_wheel_joint", ticks_per_radian));
+  left_motor_->set_gains(kp, kd, ki, kw);
+  right_motor_.reset(new EtherbotixMotor("rf_wheel_joint", ticks_per_radian));
+  right_motor_->set_gains(kp, kd, ki, kw);
+
+  // Controller manager
+  controller_manager_.reset(new robot_controllers_interface::ControllerManager());
+  robot_controllers_interface::JointHandlePtr j;
+  j = std::static_pointer_cast<robot_controllers_interface::JointHandle>(left_motor_);
+  controller_manager_->addJointHandle(j);
+  j = std::static_pointer_cast<robot_controllers_interface::JointHandle>(right_motor_);
+  controller_manager_->addJointHandle(j);
 
   // ROS interfaces
   joint_state_pub_ = this->create_publisher<sensor_msgs::msg::JointState>("joint_states", 10);
@@ -125,9 +141,20 @@ void Etherbotix::update(const boost::system::error_code & /*e*/)
     return;
   }
 
-  // TODO: reset joint handle commands, set proper state
+  if (!initialized_)
+  {
+    // This has to be done here, shared_from_this doesn't work in constructor
+    controller_manager_->init(shared_from_this());
+    initialized_ = true;
+  }
 
-  // TODO: update controllers
+  // Reset joint handle commands
+  left_motor_->reset();
+  right_motor_->reset();
+
+  // Update controllers
+  uint64_t nanoseconds = milliseconds_ * 1e6;
+  controller_manager_->update(this->now(), rclcpp::Duration(nanoseconds));
 
   // Generate Commands
   size_t length = 0;
@@ -140,18 +167,16 @@ void Etherbotix::update(const boost::system::error_code & /*e*/)
 
   // Read 128 bytes from etherbotix
   length += dynamixel::get_read_packet(&send_buf[length], ETHERBOTIX_ID, 0, 128);
-  ++length;  // TODO: fix firmware bug
+  ++length;  // TODO(fergs): fix firmware bug
   ++length;
 
-  // Get motor updates
-  left_motor_->set_command(10000);
-  length += left_motor_->get_packets(&send_buf[length], 1);
-  ++length;
-  ++length;
-  right_motor_->set_command(10000);
+  // Get motor update packets
   length += right_motor_->get_packets(&send_buf[length], 2);
+  ++length;  // TODO(fergs): fix firmware bug
+  ++length;
+  length += left_motor_->get_packets(&send_buf[length], 1);
 
-  // kick the hardware to send some stuff back
+  // Send packets to hardware
   udp::endpoint receiver_endpoint =
     udp::endpoint(boost::asio::ip::address::from_string(ip_), port_);
   try
@@ -163,8 +188,9 @@ void Etherbotix::update(const boost::system::error_code & /*e*/)
     std::cerr << e.what() << std::endl;
   }
 
-  // need to set a new expiration time before calling async_wait again
-  update_timer_.expires_at(update_timer_.expires_at() + boost::posix_time::milliseconds(milliseconds_));
+  // Need to set a new expiration time before calling async_wait again
+  update_timer_.expires_at(update_timer_.expires_at() +
+                           boost::posix_time::milliseconds(milliseconds_));
   update_timer_.async_wait(boost::bind(&Etherbotix::update, this, _1));
 }
 
@@ -178,15 +204,15 @@ void Etherbotix::publish()
   sensor_msgs::msg::JointState msg;
   msg.header.stamp = this->now();
 
-  msg.name.push_back(left_motor_->get_name());
-  msg.position.push_back(left_motor_->get_position());
-  msg.velocity.push_back(left_motor_->get_velocity());
-  msg.effort.push_back(left_motor_->get_current());
+  msg.name.push_back(left_motor_->getName());
+  msg.position.push_back(left_motor_->getPosition());
+  msg.velocity.push_back(left_motor_->getVelocity());
+  msg.effort.push_back(left_motor_->getEffort());
 
-  msg.name.push_back(right_motor_->get_name());
-  msg.position.push_back(right_motor_->get_position());
-  msg.velocity.push_back(right_motor_->get_velocity());
-  msg.effort.push_back(right_motor_->get_current());
+  msg.name.push_back(right_motor_->getName());
+  msg.position.push_back(right_motor_->getPosition());
+  msg.velocity.push_back(right_motor_->getVelocity());
+  msg.effort.push_back(right_motor_->getEffort());
 
   joint_state_pub_->publish(msg);
 }
@@ -244,7 +270,7 @@ void Etherbotix::handle_receive(
         break;
       }
 
-      // TODO: checksum check
+      // TODO(fergs): checksum check
 
       uint8_t start_addr = recv_buffer_[idx++];
       for (uint8_t i = 0; i < len; ++i)
@@ -334,7 +360,7 @@ void Etherbotix::handle_receive(
         }
         else if (addr == REG_MOTOR1_VEL)
         {
-          // TODO verify length remaining
+          // TODO(fergs): verify length remaining
           int16_t vel = (recv_buffer_[idx + i + 0] << 0) +
                         (recv_buffer_[idx + i + 1] << 8);
           int32_t pos = (recv_buffer_[idx + i + 4] << 0) +
@@ -347,12 +373,13 @@ void Etherbotix::handle_receive(
         }
         else if (addr == REG_MOTOR2_VEL)
         {
+          // TODO(fergs): verify length remaining
           int16_t vel = (recv_buffer_[idx + i + 0] << 0) +
                         (recv_buffer_[idx + i + 1] << 8);
-          int32_t pos = (recv_buffer_[idx + i + 4] << 0) +
-                        (recv_buffer_[idx + i + 5] << 8) +
-                        (recv_buffer_[idx + i + 6] << 16) +
-                        (recv_buffer_[idx + i + 7] << 24);
+          int32_t pos = (recv_buffer_[idx + i + 6] << 0) +
+                        (recv_buffer_[idx + i + 7] << 8) +
+                        (recv_buffer_[idx + i + 8] << 16) +
+                        (recv_buffer_[idx + i + 9] << 24);
           int16_t cur = (recv_buffer_[idx + i + 12] << 0) +
                         (recv_buffer_[idx + i + 13] << 8);
           right_motor_->update_from_packet(vel, pos, cur);
@@ -363,7 +390,7 @@ void Etherbotix::handle_receive(
           float kd = copy_float(recv_buffer_[idx + i + 4]);
           float ki = copy_float(recv_buffer_[idx + i + 8]);
           float windup = copy_float(recv_buffer_[idx + i + 12]);
-          right_motor_->update_gains_from_packet(kp, kd, ki, windup);
+          left_motor_->update_gains_from_packet(kp, kd, ki, windup);
         }
         else if (addr == REG_MOTOR2_KP)
         {
@@ -373,7 +400,7 @@ void Etherbotix::handle_receive(
           float windup = copy_float(recv_buffer_[idx + i + 12]);
           right_motor_->update_gains_from_packet(kp, kd, ki, windup);
         }
-        // imu
+        // TODO(fergs): parse IMU information
         else if (addr == REG_USART3_BAUD)
         {
           uint8_t baud = recv_buffer_[idx + i];
@@ -423,9 +450,6 @@ void Etherbotix::handle_receive(
                          (recv_buffer_[idx + i + 3] << 24);
         }
       }
-
-      //RCLCPP_INFO(logger_, "Got response from %d, with %d bytes of payload", id, len);
-      RCLCPP_INFO(logger_, "%d: system time %d (good: %d, bad: %d) %fV", id, system_time_, packets_recv_, packets_bad_, system_voltage_);
 
       idx += len + 1;
     }

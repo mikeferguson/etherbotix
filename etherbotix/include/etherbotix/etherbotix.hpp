@@ -39,6 +39,7 @@
 #include "etherbotix/etherbotix_motor.hpp"
 
 #include "rclcpp/rclcpp.hpp"
+#include "robot_controllers_interface/controller_manager.h"
 #include "sensor_msgs/msg/joint_state.hpp"
 
 namespace etherbotix
@@ -135,7 +136,7 @@ public:
   /** @brief Get the baud rate for the Dynamixel bus. -1 if not read. */
   int get_baud_rate() { return baud_rate_; }
 
-  // TODO digital IO
+  // TODO(fergs): digital IO
 
   /** @brief Get the board system time in milliseconds. */
   uint32_t get_system_time() { return system_time_; }
@@ -180,6 +181,8 @@ private:
   rclcpp::Logger logger_;
   rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr joint_state_pub_;
   rclcpp::TimerBase::SharedPtr publish_timer_;
+  robot_controllers_interface::ControllerManagerPtr controller_manager_;
+  bool initialized_;
 
   // ROS2 parameters
   std::string ip_;  // ip address to bind

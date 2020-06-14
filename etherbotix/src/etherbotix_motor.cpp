@@ -27,13 +27,13 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <string>
 #include <stdexcept>
 
+#include "etherbotix/copy_float.hpp"
 #include "etherbotix/dynamixel.hpp"
 #include "etherbotix/etherbotix.hpp"
 #include "etherbotix/etherbotix_motor.hpp"
-
-#include <iostream>
 
 namespace etherbotix
 {
@@ -55,12 +55,11 @@ EtherbotixMotor::EtherbotixMotor(const std::string& name, double ticks_per_radia
   desired_ki_(-1.0),
   desired_windup_(-1.0)
 {
-
 }
 
 EtherbotixMotor::~EtherbotixMotor(){}
 
-bool EtherbotixMotor::set_gain(float kp, float kd, float ki, float windup)
+bool EtherbotixMotor::set_gains(float kp, float kd, float ki, float windup)
 {
   desired_kp_ = kp;
   desired_kd_ = kd;
@@ -86,17 +85,6 @@ bool EtherbotixMotor::get_gains(float & kp, float & kd, float & ki, float & wind
   return true;
 }
 
-bool EtherbotixMotor::set_command(double velocity)
-{
-  if (motor_period_ < 0)
-  {
-    return false;
-  }
-
-  desired_velocity_ = (velocity / ticks_per_radian_) * (motor_period_ / 1000.0);
-  return true;
-}
-
 void EtherbotixMotor::update_from_packet(int16_t velocity, int32_t position, int16_t current)
 {
   if (motor_period_ < 0)
@@ -110,7 +98,7 @@ void EtherbotixMotor::update_from_packet(int16_t velocity, int32_t position, int
   // Convert to radians
   position_ = position / ticks_per_radian_;
 
-  // TODO: Convert to amperes
+  // TODO(fergs): Convert to amperes
   current_ = current;
 }
 
@@ -153,9 +141,72 @@ uint8_t EtherbotixMotor::get_packets(uint8_t * buffer, int motor_idx)
   buffer[len++] = (desired_velocity_ >> 8);
   buffer[len++] = dynamixel::compute_checksum(buffer, 9);
 
-  // TODO: update gains if needed
+  // Update gains if needed
+  if (kp_ != desired_kp_ ||
+      kd_ != desired_kd_ ||
+      ki_ != desired_ki_ ||
+      windup_ != desired_windup_)
+  {
+    // TODO(fergs): fix firmware bug
+    buffer[len++] = 0;
+    buffer[len++] = 0;
+
+    if (kp_ >= 0.0 && kd_ >= 0.0 && ki_ >= 0.0 &&
+        desired_kp_ >= 0.0 && desired_kd_ >= 0.0 && desired_ki_ >= 0.0)
+    {
+      uint8_t start = len;
+      buffer[len++] = 0xff;
+      buffer[len++] = 0xff;
+      buffer[len++] = Etherbotix::ETHERBOTIX_ID;
+      buffer[len++] = 19;
+      buffer[len++] = dynamixel::AX_WRITE_DATA;
+      if (motor_idx == 1)
+      {
+        buffer[len++] = Etherbotix::REG_MOTOR1_KP;
+      }
+      else
+      {
+        buffer[len++] = Etherbotix::REG_MOTOR2_KP;
+      }
+      copy_float(desired_kp_, buffer[len]);
+      len += 4;
+      copy_float(desired_kd_, buffer[len]);
+      len += 4;
+      copy_float(desired_ki_, buffer[len]);
+      len += 4;
+      copy_float(desired_windup_, buffer[len]);
+      len += 4;
+      buffer[len++] = dynamixel::compute_checksum(&buffer[start], 20);
+    }
+  }
 
   return len;
+}
+
+void EtherbotixMotor::setPosition(double /*position*/, double /*velocity*/, double /*effort*/)
+{
+  throw std::runtime_error("position control mode is not supported");
+}
+
+void EtherbotixMotor::setVelocity(double velocity, double /*effort*/)
+{
+  if (motor_period_ < 0)
+  {
+    return;
+  }
+
+  desired_velocity_ = (velocity * ticks_per_radian_) * (motor_period_ / 1000.0);
+}
+
+void EtherbotixMotor::setEffort(double effort)
+{
+  (void) effort;
+  throw std::runtime_error("effort control mode is not supported");
+}
+
+double EtherbotixMotor::getVelocityMax()
+{
+  return 10000;  // TODO(fergs): load this value
 }
 
 }  // namespace etherbotix
