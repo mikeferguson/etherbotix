@@ -31,6 +31,7 @@ include_directories(
 add_library(etherbotix SHARED
   src/etherbotix.cpp
   src/etherbotix_motor.cpp
+  src/etherbotix_ros.cpp
 )
 target_link_libraries(etherbotix ${Boost_LIBRARIES})
 ament_target_dependencies(etherbotix
@@ -41,7 +42,7 @@ ament_target_dependencies(etherbotix
 )
 
 rclcpp_components_register_node(etherbotix
-  PLUGIN "etherbotix::Etherbotix"
+  PLUGIN "etherbotix::EtherbotixROS"
   EXECUTABLE etherbotix_driver
 )
 

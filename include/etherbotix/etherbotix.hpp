@@ -38,14 +38,10 @@
 
 #include "etherbotix/etherbotix_motor.hpp"
 
-#include "rclcpp/rclcpp.hpp"
-#include "robot_controllers_interface/controller_manager.h"
-#include "sensor_msgs/msg/joint_state.hpp"
-
 namespace etherbotix
 {
 
-class Etherbotix : public rclcpp::Node
+class Etherbotix
 {
 public:
   /*
@@ -127,7 +123,9 @@ public:
   // ID for the Etherbotix
   static constexpr int ETHERBOTIX_ID = 253;
 
-  explicit Etherbotix(const rclcpp::NodeOptions & options);
+  explicit Etherbotix(const std::string & ip = "192.168.0.42",
+                      int port = 6707,
+                      int millisecond = 10);
   virtual ~Etherbotix();
 
   /** @brief Get the version of this board, -1 if not yet read. */
@@ -150,15 +148,21 @@ public:
   /** @brief Get the system voltage in volts. */
   float get_system_voltage() { return system_voltage_; }
 
-private:
-  /** @brief Gets called at a periodic rate, updates everything. */
-  void update(const boost::system::error_code & /*e*/);
+  EtherbotixMotorPtr getLeftMotor() { return left_motor_; }
+  EtherbotixMotorPtr getRightMotor() { return right_motor_; }
 
-  /** @brief Publisher update callback. */
-  void publish();
+  /** @brief Send a packet to Etherbotix. */
+  void send(const uint8_t * buffer, size_t len);
+
+protected:
+  /** @brief Gets called at a periodic rate, updates everything. */
+  virtual void update(const boost::system::error_code & /*e*/);
 
   /** @brief We need to run the boost::asio::io_service in a thread. */
   void io_thread();
+
+  /** @brief Shutdown the ASIO services. */
+  void shutdown();
 
   /** @brief This sets up an async recieve from asio. */
   void start_receive();
@@ -177,17 +181,12 @@ private:
   // 100hz timer for sending new data request
   boost::asio::deadline_timer update_timer_;
 
-  // ROS2 interfaces
-  rclcpp::Logger logger_;
-  rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr joint_state_pub_;
-  rclcpp::TimerBase::SharedPtr publish_timer_;
-  robot_controllers_interface::ControllerManagerPtr controller_manager_;
-  bool initialized_;
+  // Ethernet interface
+  std::string ip_;
+  int port_;
 
-  // ROS2 parameters
-  std::string ip_;  // ip address to bind
-  int port_;  // port to bind
-  int64_t milliseconds_;  // duration between updates
+  // Duration between updates
+  int64_t milliseconds_;
 
   // Mirror of register table
   int version_;
@@ -206,8 +205,8 @@ private:
   int imu_flags_;
   int motor_period_;
   int motor_max_step_;
-  std::shared_ptr<EtherbotixMotor> left_motor_;
-  std::shared_ptr<EtherbotixMotor> right_motor_;
+  EtherbotixMotorPtr left_motor_;
+  EtherbotixMotorPtr right_motor_;
   int16_t imu_acc_x_;
   int16_t imu_acc_y_;
   int16_t imu_acc_z_;

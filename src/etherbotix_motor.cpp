@@ -59,6 +59,11 @@ EtherbotixMotor::EtherbotixMotor(const std::string& name, double ticks_per_radia
 
 EtherbotixMotor::~EtherbotixMotor(){}
 
+void EtherbotixMotor::set_ticks_per_radian(double ticks_per_radian)
+{
+  ticks_per_radian_ = ticks_per_radian;
+}
+
 bool EtherbotixMotor::set_gains(float kp, float kd, float ki, float windup)
 {
   desired_kp_ = kp;

@@ -30,6 +30,7 @@
 #ifndef ETHERBOTIX__ETHERBOTIX_MOTOR_HPP_
 #define ETHERBOTIX__ETHERBOTIX_MOTOR_HPP_
 
+#include <memory>
 #include <string>
 
 #include "robot_controllers_interface/joint_handle.h"
@@ -57,6 +58,9 @@ public:
 
   /** @brief Get the motor current in amperes. */
   virtual double getEffort() { return current_; }
+
+  /** @brief Set the ticks per radians for conversion. */
+  void set_ticks_per_radian(double ticks_per_radian);
 
   /** @brief Send gains to the board. */
   bool set_gains(float kp, float kd, float ki, float windup);
@@ -107,6 +111,8 @@ private:
   float desired_ki_;
   float desired_windup_;
 };
+
+using EtherbotixMotorPtr = std::shared_ptr<EtherbotixMotor>;
 
 }  // namespace etherbotix
 
