@@ -20,6 +20,7 @@ find_package(Boost REQUIRED system)
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(rclcpp_components REQUIRED)
+find_package(sensor_msgs REQUIRED)
 
 include_directories(
   include
@@ -28,11 +29,13 @@ include_directories(
 
 add_library(etherbotix SHARED
   src/etherbotix.cpp
+  src/etherbotix_motor.cpp
 )
 target_link_libraries(etherbotix ${Boost_LIBRARIES})
 ament_target_dependencies(etherbotix
   rclcpp
   rclcpp_components
+  sensor_msgs
 )
 
 rclcpp_components_register_node(etherbotix

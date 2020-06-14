@@ -30,12 +30,16 @@
 #ifndef ETHERBOTIX__ETHERBOTIX_HPP_
 #define ETHERBOTIX__ETHERBOTIX_HPP_
 
+#include <memory>
 #include <string>
 
 #include "boost/array.hpp"
 #include "boost/asio.hpp"
 
+#include "etherbotix/etherbotix_motor.hpp"
+
 #include "rclcpp/rclcpp.hpp"
+#include "sensor_msgs/msg/joint_state.hpp"
 
 namespace etherbotix
 {
@@ -101,13 +105,13 @@ public:
   static constexpr int REG_MAG_Z = 96;
 
   // Device Setup
-  static constexpr int REG_USART_BAUD = 98;
-  static constexpr int REG_USART_CHAR = 99;
+  static constexpr int REG_USART3_BAUD = 98;
+  static constexpr int REG_USART3_CHAR = 99;
   static constexpr int REG_TIM9_MODE = 100;
   static constexpr int REG_TIM9_COUNT = 102;
   static constexpr int REG_TIM12_MODE = 104;
   static constexpr int REG_TIM12_COUNT = 106;
-  static constexpr int REG_SPI_BAUD = 108;
+  static constexpr int REG_SPI2_BAUD = 108;
 
   // Stats
   static constexpr int REG_PACKETS_RECV = 120;
@@ -125,9 +129,32 @@ public:
   explicit Etherbotix(const rclcpp::NodeOptions & options);
   virtual ~Etherbotix();
 
+  /** @brief Get the version of this board, -1 if not yet read. */
+  int get_version() { return version_; }
+
+  /** @brief Get the baud rate for the Dynamixel bus. -1 if not read. */
+  int get_baud_rate() { return baud_rate_; }
+
+  // TODO digital IO
+
+  /** @brief Get the board system time in milliseconds. */
+  uint32_t get_system_time() { return system_time_; }
+
+  /** @brief Get the servo current in amperes. */
+  float get_server_current() { return servo_current_; }
+
+  /** @brief Get the aux current in amperes. */
+  float get_aux_current() { return aux_current_; }
+
+  /** @brief Get the system voltage in volts. */
+  float get_system_voltage() { return system_voltage_; }
+
 private:
   /** @brief Gets called at a periodic rate, updates everything. */
   void update(const boost::system::error_code & /*e*/);
+
+  /** @brief Publisher update callback. */
+  void publish();
 
   /** @brief We need to run the boost::asio::io_service in a thread. */
   void io_thread();
@@ -151,6 +178,8 @@ private:
 
   // ROS2 interfaces
   rclcpp::Logger logger_;
+  rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr joint_state_pub_;
+  rclcpp::TimerBase::SharedPtr publish_timer_;
 
   // ROS2 parameters
   std::string ip_;  // ip address to bind
@@ -158,8 +187,42 @@ private:
   int64_t milliseconds_;  // duration between updates
 
   // Mirror of register table
-  uint8_t version_;
-  uint32_t system_time_;
+  int version_;
+  int baud_rate_;  // dynamixel bus baud in bps
+  int digital_in_;
+  int digital_out_;
+  int digital_dir_;
+  int user_io_use_;  // mask over digital IO
+  int analog0_;
+  int analog1_;
+  int analog2_;
+  uint32_t system_time_;  // milliseconds
+  float servo_current_;  // amsp
+  float aux_current_;  // amps
+  float system_voltage_;  // volts
+  int imu_flags_;
+  int motor_period_;
+  int motor_max_step_;
+  std::shared_ptr<EtherbotixMotor> left_motor_;
+  std::shared_ptr<EtherbotixMotor> right_motor_;
+  int16_t imu_acc_x_;
+  int16_t imu_acc_y_;
+  int16_t imu_acc_z_;
+  int16_t imu_gyro_x_;
+  int16_t imu_gyro_y_;
+  int16_t imu_gyro_z_;
+  int16_t imu_mag_x_;
+  int16_t imu_mag_y_;
+  int16_t imu_mag_z_;
+  int usart3_baud_;  // baud rate in bps
+  uint8_t usart3_char_;  // temrminating character
+  uint16_t tim9_mode_;
+  uint16_t tim9_count_;
+  uint16_t tim12_mode_;
+  uint16_t tim12_count_;
+  int spi2_baud_;  // baud rate in bps
+  uint32_t packets_recv_;
+  uint32_t packets_bad_;
 };
 
 }  // namespace etherbotix

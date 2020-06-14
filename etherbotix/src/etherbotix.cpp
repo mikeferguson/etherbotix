@@ -35,6 +35,7 @@
 #include <string>
 
 #include "etherbotix/etherbotix.hpp"
+#include "etherbotix/copy_float.hpp"
 #include "etherbotix/dynamixel.hpp"
 
 #include "boost/bind.hpp"
@@ -49,13 +50,57 @@ Etherbotix::Etherbotix(const rclcpp::NodeOptions & options)
 : rclcpp::Node("etherbotix", options),
   socket_(io_service_),
   update_timer_(io_service_, boost::posix_time::milliseconds(10)),
-  logger_(rclcpp::get_logger("etherbotix"))
+  logger_(rclcpp::get_logger("etherbotix")),
+  version_(-1),
+  baud_rate_(-1),
+  digital_in_(-1),
+  digital_out_(-1),
+  digital_dir_(-1),
+  user_io_use_(-1),
+  analog0_(-1),
+  analog1_(-1),
+  analog2_(-1),
+  system_time_(0),
+  servo_current_(0.0),
+  aux_current_(0.0),
+  system_voltage_(0.0),
+  imu_flags_(-1),
+  motor_period_(-1),
+  motor_max_step_(-1),
+  imu_acc_x_(0),
+  imu_acc_y_(0),
+  imu_acc_z_(0),
+  imu_gyro_x_(0),
+  imu_gyro_y_(0),
+  imu_gyro_z_(0),
+  imu_mag_x_(0),
+  imu_mag_y_(0),
+  imu_mag_z_(0),
+  usart3_baud_(-1),
+  usart3_char_(0),
+  tim9_mode_(0),
+  tim9_count_(0),
+  tim12_mode_(0),
+  tim12_count_(0),
+  spi2_baud_(-1),
+  packets_recv_(0),
+  packets_bad_(0)
 {
   // Declare parameters
   ip_ = this->declare_parameter<std::string>("ip_address", "192.168.0.42");
   port_ = this->declare_parameter<int>("port", 6707);
   milliseconds_ = this->declare_parameter<int64_t>("update_interval_ms", 10);
   RCLCPP_INFO(logger_, "Connecting to Etherbotix at %s:%d", ip_.c_str(), port_);
+
+  // Setup motors
+  double ticks_per_radian = this->declare_parameter<double>("ticks_per_radian", 1.0);
+  left_motor_.reset(new EtherbotixMotor("base_l_wheel_joint", ticks_per_radian));
+  right_motor_.reset(new EtherbotixMotor("base_r_wheel_joint", ticks_per_radian));
+
+  // ROS interfaces
+  joint_state_pub_ = this->create_publisher<sensor_msgs::msg::JointState>("joint_states", 10);
+  publish_timer_ = this->create_wall_timer(std::chrono::milliseconds(20),
+                                           std::bind(&Etherbotix::publish, this));
 
   // Periodic update through a boost::asio timer
   update_timer_.async_wait(boost::bind(&Etherbotix::update, this, _1));
@@ -94,7 +139,17 @@ void Etherbotix::update(const boost::system::error_code & /*e*/)
   send_buf[length++] = 'T';
 
   // Read 128 bytes from etherbotix
-  length += get_read_packet(&send_buf[length], ETHERBOTIX_ID, 0, 128);
+  length += dynamixel::get_read_packet(&send_buf[length], ETHERBOTIX_ID, 0, 128);
+  ++length;  // TODO: fix firmware bug
+  ++length;
+
+  // Get motor updates
+  left_motor_->set_command(10000);
+  length += left_motor_->get_packets(&send_buf[length], 1);
+  ++length;
+  ++length;
+  right_motor_->set_command(10000);
+  length += right_motor_->get_packets(&send_buf[length], 2);
 
   // kick the hardware to send some stuff back
   udp::endpoint receiver_endpoint =
@@ -111,6 +166,29 @@ void Etherbotix::update(const boost::system::error_code & /*e*/)
   // need to set a new expiration time before calling async_wait again
   update_timer_.expires_at(update_timer_.expires_at() + boost::posix_time::milliseconds(milliseconds_));
   update_timer_.async_wait(boost::bind(&Etherbotix::update, this, _1));
+}
+
+void Etherbotix::publish()
+{
+  if (!rclcpp::ok())
+  {
+    return;
+  }
+
+  sensor_msgs::msg::JointState msg;
+  msg.header.stamp = this->now();
+
+  msg.name.push_back(left_motor_->get_name());
+  msg.position.push_back(left_motor_->get_position());
+  msg.velocity.push_back(left_motor_->get_velocity());
+  msg.effort.push_back(left_motor_->get_current());
+
+  msg.name.push_back(right_motor_->get_name());
+  msg.position.push_back(right_motor_->get_position());
+  msg.velocity.push_back(right_motor_->get_velocity());
+  msg.effort.push_back(right_motor_->get_current());
+
+  joint_state_pub_->publish(msg);
 }
 
 void Etherbotix::io_thread()
@@ -176,14 +254,45 @@ void Etherbotix::handle_receive(
         {
           version_ = recv_buffer_[idx + i];
         }
-        // BAUD_RATE
-        // DIGITAL_IN
-        // DIGITAL_OUT
-        // DIGITAL_DIR
-        // USER_IO_USE
-        // A0
-        // A1
-        // A2
+        else if (addr == REG_BAUD_RATE)
+        {
+          uint8_t baud = recv_buffer_[idx + i];
+          baud_rate_ = dynamixel::get_baud_rate(baud);
+        }
+        else if (addr == REG_DIGITAL_IN)
+        {
+          digital_in_ = recv_buffer_[idx + 1];
+        }
+        else if (addr == REG_DIGITAL_OUT)
+        {
+          digital_out_ = recv_buffer_[idx + 1];
+        }
+        else if (addr == REG_DIGITAL_DIR)
+        {
+          digital_dir_ = recv_buffer_[idx + 1];
+        }
+        else if (addr == REG_USER_IO_USE)
+        {
+          user_io_use_ = recv_buffer_[idx + 1];
+        }
+        else if (addr == REG_A0)
+        {
+          uint16_t value = (recv_buffer_[idx + i + 0] << 0) +
+                           (recv_buffer_[idx + i + 1] << 8);
+          analog0_ = value;
+        }
+        else if (addr == REG_A1)
+        {
+          uint16_t value = (recv_buffer_[idx + i + 0] << 0) +
+                           (recv_buffer_[idx + i + 1] << 8);
+          analog1_ = value;
+        }
+        else if (addr == REG_A2)
+        {
+          uint16_t value = (recv_buffer_[idx + i + 0] << 0) +
+                           (recv_buffer_[idx + i + 1] << 8);
+          analog2_ = value;
+        }
         else if (addr == REG_SYSTEM_TIME)
         {
           system_time_ = (recv_buffer_[idx + i + 0] << 0) +
@@ -191,29 +300,132 @@ void Etherbotix::handle_receive(
                          (recv_buffer_[idx + i + 2] << 16) +
                          (recv_buffer_[idx + i + 3] << 24);
         }
-        // SERVO CURRENT
-        // AUX CURRENT
-        // SYSTEM VOLTAGE
+        else if (addr == REG_SERVO_CURRENT)
+        {
+          int16_t current = (recv_buffer_[idx + i + 0] << 0) +
+                            (recv_buffer_[idx + i + 1] << 8);
+          servo_current_ = current / 1000.0;  // mA - > A
+        }
+        else if (addr == REG_AUX_CURRENT)
+        {
+          int16_t current = (recv_buffer_[idx + i + 0] << 0) +
+                            (recv_buffer_[idx + i + 1] << 8);
+          aux_current_ = current / 1000.0;  // mA -> A
+        }
+        else if (addr == REG_SYSTEM_VOLTAGE)
+        {
+          system_voltage_ = static_cast<float>(recv_buffer_[idx + i]) / 10.0;
+        }
         // LED
-        // IMU FLAGS
-        // MOTOR_PERIOD
-        // MOTOR_MAX_STEP
-        // MOTOR1_VEL
-        // MOTOR2_VEL
-        // MOTOR1_POS
-        // MOTOR2_POS
-        // MOTOR1_CURRENT
-        // MOTOR2_CURRENT
-        // kp/kd/di/windup
+        else if (addr == REG_IMU_FLAGS)
+        {
+          imu_flags_ = recv_buffer_[idx + i];
+        }
+        else if (addr == REG_MOTOR_PERIOD)
+        {
+          uint8_t period = recv_buffer_[idx + i];
+          left_motor_->update_motor_period_from_packet(period);
+          right_motor_->update_motor_period_from_packet(period);
+        }
+        else if (addr == REG_MOTOR_MAX_STEP)
+        {
+          motor_max_step_ = (recv_buffer_[idx + i + 0] << 0) +
+                            (recv_buffer_[idx + i + 1] << 8);
+        }
+        else if (addr == REG_MOTOR1_VEL)
+        {
+          // TODO verify length remaining
+          int16_t vel = (recv_buffer_[idx + i + 0] << 0) +
+                        (recv_buffer_[idx + i + 1] << 8);
+          int32_t pos = (recv_buffer_[idx + i + 4] << 0) +
+                        (recv_buffer_[idx + i + 5] << 8) +
+                        (recv_buffer_[idx + i + 6] << 16) +
+                        (recv_buffer_[idx + i + 7] << 24);
+          int16_t cur = (recv_buffer_[idx + i + 12] << 0) +
+                        (recv_buffer_[idx + i + 13] << 8);
+          left_motor_->update_from_packet(vel, pos, cur);
+        }
+        else if (addr == REG_MOTOR2_VEL)
+        {
+          int16_t vel = (recv_buffer_[idx + i + 0] << 0) +
+                        (recv_buffer_[idx + i + 1] << 8);
+          int32_t pos = (recv_buffer_[idx + i + 4] << 0) +
+                        (recv_buffer_[idx + i + 5] << 8) +
+                        (recv_buffer_[idx + i + 6] << 16) +
+                        (recv_buffer_[idx + i + 7] << 24);
+          int16_t cur = (recv_buffer_[idx + i + 12] << 0) +
+                        (recv_buffer_[idx + i + 13] << 8);
+          right_motor_->update_from_packet(vel, pos, cur);
+        }
+        else if (addr == REG_MOTOR1_KP)
+        {
+          float kp = copy_float(recv_buffer_[idx + i + 0]);
+          float kd = copy_float(recv_buffer_[idx + i + 4]);
+          float ki = copy_float(recv_buffer_[idx + i + 8]);
+          float windup = copy_float(recv_buffer_[idx + i + 12]);
+          right_motor_->update_gains_from_packet(kp, kd, ki, windup);
+        }
+        else if (addr == REG_MOTOR2_KP)
+        {
+          float kp = copy_float(recv_buffer_[idx + i + 0]);
+          float kd = copy_float(recv_buffer_[idx + i + 4]);
+          float ki = copy_float(recv_buffer_[idx + i + 8]);
+          float windup = copy_float(recv_buffer_[idx + i + 12]);
+          right_motor_->update_gains_from_packet(kp, kd, ki, windup);
+        }
         // imu
-        // TIM12_MODE
-        // TIM12_COUNT
-        // PACKETS_RECV
-        // PACKETS_BAD
+        else if (addr == REG_USART3_BAUD)
+        {
+          uint8_t baud = recv_buffer_[idx + i];
+          usart3_baud_ = dynamixel::get_baud_rate(baud);
+        }
+        else if (addr == REG_USART3_CHAR)
+        {
+          usart3_char_ = recv_buffer_[idx + i];
+        }
+        else if (addr == REG_TIM9_MODE)
+        {
+          tim9_mode_ = (recv_buffer_[idx + i + 0] << 0) +
+                       (recv_buffer_[idx + i + 1] << 8);
+        }
+        else if (addr == REG_TIM9_COUNT)
+        {
+          tim9_count_ = (recv_buffer_[idx + i + 0] << 0) +
+                        (recv_buffer_[idx + i + 1] << 8);
+        }
+        else if (addr == REG_TIM12_MODE)
+        {
+          tim12_mode_ = (recv_buffer_[idx + i + 0] << 0) +
+                        (recv_buffer_[idx + i + 1] << 8);
+        }
+        else if (addr == REG_TIM12_COUNT)
+        {
+          tim12_count_ = (recv_buffer_[idx + i + 0] << 0) +
+                         (recv_buffer_[idx + i + 1] << 8);
+        }
+        else if (addr == REG_SPI2_BAUD)
+        {
+          uint8_t baud = recv_buffer_[idx + i];
+          spi2_baud_ = dynamixel::get_baud_rate(baud);
+        }
+        else if (addr == REG_PACKETS_RECV)
+        {
+          packets_recv_ = (recv_buffer_[idx + i + 0] << 0) +
+                          (recv_buffer_[idx + i + 1] << 8) +
+                          (recv_buffer_[idx + i + 2] << 16) +
+                          (recv_buffer_[idx + i + 3] << 24);
+        }
+        else if (addr == REG_PACKETS_BAD)
+        {
+          packets_bad_ = (recv_buffer_[idx + i + 0] << 0) +
+                         (recv_buffer_[idx + i + 1] << 8) +
+                         (recv_buffer_[idx + i + 2] << 16) +
+                         (recv_buffer_[idx + i + 3] << 24);
+        }
       }
 
       //RCLCPP_INFO(logger_, "Got response from %d, with %d bytes of payload", id, len);
-      RCLCPP_INFO(logger_, "%d: system time %d", id, system_time_);
+      RCLCPP_INFO(logger_, "%d: system time %d (good: %d, bad: %d) %fV", id, system_time_, packets_recv_, packets_bad_, system_voltage_);
 
       idx += len + 1;
     }

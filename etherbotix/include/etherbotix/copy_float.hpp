@@ -27,79 +27,52 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef ETHERBOTIX__DYNAMIXEL_HPP_
-#define ETHERBOTIX__DYNAMIXEL_HPP_
+#ifndef ETHERBOTIX__COPY_FLOAT_HPP_
+#define ETHERBOTIX__COPY_FLOAT_HPP_
 
-#include "boost/array.hpp"
-
-namespace dynamixel
+namespace etherbotix
 {
 
-constexpr uint8_t AX_READ_DATA = 2;
-constexpr uint8_t AX_WRITE_DATA = 3;
-
-inline uint8_t compute_checksum(
-  uint8_t* buffer,
-  uint8_t length)
+/**
+ *  @brief Copy a float into possibly unaligned
+ *         data structure.
+ *  @param f The float to copy into data structure.
+ *  @param t The data structure to copy float into.
+ */
+template<typename T>
+void copy_float(float f, T& t)
 {
-  uint8_t checksum = 0;
-  for (uint8_t i = 2; i < length - 1; ++i)
+  uint8_t* f_as_uint8 = reinterpret_cast<uint8_t*>(&f);
+  uint8_t* t_as_uint8 = reinterpret_cast<uint8_t*>(&t);
+
+  for (std::size_t i = 0; i < 4; ++i)
   {
-    checksum += buffer[i];
+    t_as_uint8[i] = f_as_uint8[i];
   }
-  return (255 - checksum);
 }
 
-inline uint8_t get_read_packet(
-  uint8_t* buffer,
-  uint8_t device_id,
-  uint8_t address,
-  uint8_t length)
+/**
+ *  @brief Get float from possibly unaligned
+ *         data structure.
+ *  @param t The data structure to read as float.
+ *  @returns The float value.
+ */
+template<typename T>
+float copy_float(T& t)
 {
-  buffer[0] = 0xff;
-  buffer[1] = 0xff;
-  buffer[2] = device_id;
-  buffer[3] = 4;  // Length of remaining packet
-  buffer[4] = AX_READ_DATA;
-  buffer[5] = address;
-  buffer[6] = length;
-  buffer[7] = compute_checksum(buffer, 8);
+  float f;
 
-  // Return number of bytes added to buffer
-  return 8;
+  uint8_t* f_as_uint8 = reinterpret_cast<uint8_t*>(&f);
+  uint8_t* t_as_uint8 = reinterpret_cast<uint8_t*>(&t);
+
+  for (std::size_t i = 0; i < 4; ++i)
+  {
+    f_as_uint8[i] = t_as_uint8[i];
+  }
+
+  return f;
 }
 
-inline int get_baud_rate(uint8_t reg_value)
-{
-  if (reg_value == 1)
-  {
-    return 1000000;
-  }
-  else if (reg_value == 3)
-  {
-    return 500000;
-  }
-  else if (reg_value == 34)
-  {
-    return 57600;
-  }
-  else if (reg_value == 250)
-  {
-    return 2250000;
-  }
-  else if (reg_value == 251)
-  {
-    return 2500000;
-  }
-  else if (reg_value == 252)
-  {
-    return 3000000;
-  }
+}  // namespace etherbotix
 
-  // Unknown baud
-  return -1;
-}
-
-}  // namespace dynamixel
-
-#endif  // ETHERBOTIX__DYNAMIXEL_HPP_
+#endif  // ETHERBOTIX__COPY_FLOAT_HPP_
