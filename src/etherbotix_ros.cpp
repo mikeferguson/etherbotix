@@ -118,13 +118,9 @@ void EtherbotixROS::update(const boost::system::error_code & e)
 
   // Read 128 bytes from etherbotix
   length += dynamixel::get_read_packet(&send_buf[length], ETHERBOTIX_ID, 0, 128);
-  ++length;  // TODO(fergs): fix firmware bug
-  ++length;
 
   // Get motor update packets
   length += right_motor_->get_packets(&send_buf[length], 2);
-  ++length;  // TODO(fergs): fix firmware bug
-  ++length;
   length += left_motor_->get_packets(&send_buf[length], 1);
 
   this->send(send_buf, length);

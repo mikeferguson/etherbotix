@@ -152,10 +152,6 @@ uint8_t EtherbotixMotor::get_packets(uint8_t * buffer, int motor_idx)
       ki_ != desired_ki_ ||
       windup_ != desired_windup_)
   {
-    // TODO(fergs): fix firmware bug
-    buffer[len++] = 0;
-    buffer[len++] = 0;
-
     if (kp_ >= 0.0 && kd_ >= 0.0 && ki_ >= 0.0 &&
         desired_kp_ >= 0.0 && desired_kd_ >= 0.0 && desired_ki_ >= 0.0)
     {
