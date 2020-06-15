@@ -33,6 +33,7 @@
  */
 
 #include <string>
+#include <sstream>
 #include <thread>
 
 #include "etherbotix/etherbotix.hpp"
@@ -180,7 +181,7 @@ void Etherbotix::handle_receive(
 
       uint8_t id = recv_buffer_[idx++];
       uint8_t len = recv_buffer_[idx++];
-      if (idx + len + 2 > bytes_transferred)
+      if (idx + len > bytes_transferred)
       {
         //RCLCPP_WARN(logger_, "Not enough bytes left!");
         break;
@@ -188,7 +189,34 @@ void Etherbotix::handle_receive(
 
       // TODO(fergs): checksum check
 
+      // Set length to just the parameters
+      len -= 2;
+
+      // TODO(fergs): handle id != ETHERBOTIX_ID
+
+      //++idx; // error byte
       uint8_t start_addr = recv_buffer_[idx++];
+      if (start_addr >= 128)
+      {
+        // Etherbotix Device
+        if (start_addr == DEV_UNIQUE_ID)
+        {
+          if (len == 12)
+          {
+            std::stringstream uid;
+            for (size_t j = 0; j < 12; j++)
+            {
+              uid << std::hex << std::uppercase << std::setw(2) << std::setfill('0') << static_cast<int>(recv_buffer_[idx + j]);
+            }
+            unique_id_ = uid.str();
+          }
+        }
+
+        // Not a valid device, but no need to process it as regular table below
+        continue;
+      }
+
+      // Etherbotix register table
       for (uint8_t i = 0; i < len; ++i)
       {
         uint8_t addr = start_addr + i;

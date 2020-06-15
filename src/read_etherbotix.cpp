@@ -44,9 +44,10 @@ int main (int argc, char *argv[])
   buffer[len++] = 'O';
   buffer[len++] = 'T';
   len += dynamixel::get_read_packet(&buffer[len], Etherbotix::ETHERBOTIX_ID, 0, 128);
+  len += dynamixel::get_read_packet(&buffer[len], Etherbotix::ETHERBOTIX_ID, Etherbotix::DEV_UNIQUE_ID, 12);
 
   Etherbotix e;
-  while (e.get_system_time() == 0)
+  while (e.get_system_time() == 0 || e.get_unique_id() == "")
   {
     e.send(buffer, len);
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
