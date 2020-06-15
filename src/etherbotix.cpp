@@ -80,13 +80,14 @@ Etherbotix::Etherbotix(const std::string & ip, int port, int millisecond)
   imu_mag_z_(0),
   usart3_baud_(-1),
   usart3_char_(0),
-  tim9_mode_(0),
+  tim9_mode_(-1),
   tim9_count_(0),
-  tim12_mode_(0),
+  tim12_mode_(-1),
   tim12_count_(0),
   spi2_baud_(-1),
   packets_recv_(0),
-  packets_bad_(0)
+  packets_bad_(0),
+  unique_id_("")
 {
   // Setup motors
   left_motor_.reset(new EtherbotixMotor("lf_wheel_joint", 1));
@@ -201,19 +202,19 @@ void Etherbotix::handle_receive(
         }
         else if (addr == REG_DIGITAL_IN)
         {
-          digital_in_ = recv_buffer_[idx + 1];
+          digital_in_ = recv_buffer_[idx + i];
         }
         else if (addr == REG_DIGITAL_OUT)
         {
-          digital_out_ = recv_buffer_[idx + 1];
+          digital_out_ = recv_buffer_[idx + i];
         }
         else if (addr == REG_DIGITAL_DIR)
         {
-          digital_dir_ = recv_buffer_[idx + 1];
+          digital_dir_ = recv_buffer_[idx + i];
         }
         else if (addr == REG_USER_IO_USE)
         {
-          user_io_use_ = recv_buffer_[idx + 1];
+          user_io_use_ = recv_buffer_[idx + i];
         }
         else if (addr == REG_A0)
         {
@@ -263,9 +264,9 @@ void Etherbotix::handle_receive(
         }
         else if (addr == REG_MOTOR_PERIOD)
         {
-          uint8_t period = recv_buffer_[idx + i];
-          left_motor_->update_motor_period_from_packet(period);
-          right_motor_->update_motor_period_from_packet(period);
+          motor_period_ = recv_buffer_[idx + i];
+          left_motor_->update_motor_period_from_packet(motor_period_);
+          right_motor_->update_motor_period_from_packet(motor_period_);
         }
         else if (addr == REG_MOTOR_MAX_STEP)
         {
@@ -314,7 +315,28 @@ void Etherbotix::handle_receive(
           float windup = copy_float(recv_buffer_[idx + i + 12]);
           right_motor_->update_gains_from_packet(kp, kd, ki, windup);
         }
-        // TODO(fergs): parse IMU information
+        else if (addr == REG_ACC_X)
+        {
+          // TODO(fergs): verify length remaining
+          imu_acc_x_ = (recv_buffer_[idx + i + 0] << 0) +
+                       (recv_buffer_[idx + i + 1] << 8);
+          imu_acc_y_ = (recv_buffer_[idx + i + 2] << 0) +
+                       (recv_buffer_[idx + i + 3] << 8);
+          imu_acc_z_ = (recv_buffer_[idx + i + 4] << 0) +
+                       (recv_buffer_[idx + i + 5] << 8);
+          imu_gyro_x_ = (recv_buffer_[idx + i + 6] << 0) +
+                        (recv_buffer_[idx + i + 7] << 8);
+          imu_gyro_y_ = (recv_buffer_[idx + i + 8] << 0) +
+                        (recv_buffer_[idx + i + 9] << 8);
+          imu_gyro_z_ = (recv_buffer_[idx + i + 10] << 0) +
+                        (recv_buffer_[idx + i + 11] << 8);
+          imu_mag_x_ = (recv_buffer_[idx + i + 12] << 0) +
+                       (recv_buffer_[idx + i + 13] << 8);
+          imu_mag_y_ = (recv_buffer_[idx + i + 14] << 0) +
+                       (recv_buffer_[idx + i + 15] << 8);
+          imu_mag_z_ = (recv_buffer_[idx + i + 16] << 0) +
+                       (recv_buffer_[idx + i + 17] << 8);
+        }
         else if (addr == REG_USART3_BAUD)
         {
           uint8_t baud = recv_buffer_[idx + i];

@@ -134,13 +134,18 @@ public:
   /** @brief Get the baud rate for the Dynamixel bus. -1 if not read. */
   int get_baud_rate() { return baud_rate_; }
 
-  // TODO(fergs): digital IO
+  int get_digital_in() { return digital_in_; }
+  int get_digital_out() { return digital_out_; }
+  int get_digital_dir() { return digital_dir_; }
+  int get_user_io_use() { return user_io_use_; }
+
+  // TODO: set digital/analog/etc
 
   /** @brief Get the board system time in milliseconds. */
   uint32_t get_system_time() { return system_time_; }
 
   /** @brief Get the servo current in amperes. */
-  float get_server_current() { return servo_current_; }
+  float get_servo_current() { return servo_current_; }
 
   /** @brief Get the aux current in amperes. */
   float get_aux_current() { return aux_current_; }
@@ -148,8 +153,31 @@ public:
   /** @brief Get the system voltage in volts. */
   float get_system_voltage() { return system_voltage_; }
 
+  /** @brief Get the time (in milliseconds) between motor PID updates. */
+  int get_motor_period() { return motor_period_; }
+
+  int get_motor_max_step() { return motor_max_step_; }
+
   EtherbotixMotorPtr getLeftMotor() { return left_motor_; }
   EtherbotixMotorPtr getRightMotor() { return right_motor_; }
+
+  int get_imu_acc_x() { return imu_acc_x_; }
+  int get_imu_acc_y() { return imu_acc_y_; }
+  int get_imu_acc_z() { return imu_acc_z_; }
+  int get_imu_gyro_x() { return imu_gyro_x_; }
+  int get_imu_gyro_y() { return imu_gyro_y_; }
+  int get_imu_gyro_z() { return imu_gyro_z_; }
+  int get_imu_mag_x() { return imu_mag_x_; }
+  int get_imu_mag_y() { return imu_mag_y_; }
+  int get_imu_mag_z() { return imu_mag_z_; }
+
+  int get_tim12_mode() { return tim12_mode_; }
+  int get_tim12_count() { return tim12_count_; }
+
+  uint32_t get_packets_recv() { return packets_recv_; }
+  uint32_t get_packets_bad() { return packets_bad_; }
+
+  std::string get_unique_id() { return unique_id_; }
 
   /** @brief Send a packet to Etherbotix. */
   void send(const uint8_t * buffer, size_t len);
@@ -218,13 +246,14 @@ protected:
   int16_t imu_mag_z_;
   int usart3_baud_;  // baud rate in bps
   uint8_t usart3_char_;  // temrminating character
-  uint16_t tim9_mode_;
-  uint16_t tim9_count_;
-  uint16_t tim12_mode_;
-  uint16_t tim12_count_;
+  int tim9_mode_;
+  int tim9_count_;
+  int tim12_mode_;
+  int tim12_count_;
   int spi2_baud_;  // baud rate in bps
   uint32_t packets_recv_;
   uint32_t packets_bad_;
+  std::string unique_id_;
 };
 
 }  // namespace etherbotix
