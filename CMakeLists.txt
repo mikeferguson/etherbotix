@@ -78,11 +78,23 @@ ament_target_dependencies(read_etherbotix
   sensor_msgs
 )
 
+add_executable(reboot src/reboot.cpp)
+target_link_libraries(reboot
+  etherbotix
+  ${Boost_LIBRARIES}
+)
+ament_target_dependencies(reboot
+  rclcpp
+  rclcpp_components
+  robot_controllers_interface
+  sensor_msgs
+)
 
 install(
   TARGETS
     etherbotix
     read_etherbotix
+    reboot
   ARCHIVE DESTINATION lib
   LIBRARY DESTINATION lib
   RUNTIME DESTINATION lib/${PROJECT_NAME}

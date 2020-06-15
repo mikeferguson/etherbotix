@@ -106,6 +106,7 @@ Etherbotix::Etherbotix(const std::string & ip, int port, int millisecond)
 
 Etherbotix::~Etherbotix()
 {
+  shutdown();
 }
 
 void Etherbotix::send(const uint8_t * buffer, size_t len)

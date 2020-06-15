@@ -28,6 +28,7 @@
  */
 
 #include <iostream>
+#include <thread>
 
 #include "etherbotix/dynamixel.hpp"
 #include "etherbotix/etherbotix.hpp"
@@ -48,6 +49,7 @@ int main (int argc, char *argv[])
   while (e.get_system_time() == 0)
   {
     e.send(buffer, len);
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
   }
 
   std::cout << "System Time:    " << e.get_system_time() << std::endl;
