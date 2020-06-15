@@ -35,7 +35,7 @@
 
 using etherbotix::Etherbotix;
 
-int main (int argc, char *argv[])
+int main ()
 {
   uint8_t buffer[256];
   int len = 0;
@@ -43,7 +43,9 @@ int main (int argc, char *argv[])
   buffer[len++] = 'B';
   buffer[len++] = 'O';
   buffer[len++] = 'T';
-  len += dynamixel::get_read_packet(&buffer[len], Etherbotix::ETHERBOTIX_ID, Etherbotix::DEV_UNIQUE_ID, 12);
+  // Read 12 bytes from the Unique ID device
+  len += dynamixel::get_read_packet(&buffer[len], Etherbotix::ETHERBOTIX_ID,
+                                    Etherbotix::DEV_UNIQUE_ID, 12);
 
   Etherbotix e;
   while (e.get_unique_id() == "")

@@ -28,14 +28,17 @@
  */
 
 #include <boost/python.hpp>
+#include <string>
 
 #include "etherbotix/dynamixel.hpp"
 #include "etherbotix/etherbotix.hpp"
 
-using namespace etherbotix;
+using etherbotix::Etherbotix;
 
 BOOST_PYTHON_MODULE(etherbotix_py)
 {
-  boost::python::class_<Etherbotix, boost::noncopyable>("Etherbotix", boost::python::init<const std::string&, int>())
+  boost::python::class_<Etherbotix, boost::noncopyable>(
+       "Etherbotix",
+       boost::python::init<const std::string&, int>())
     .def("get_version", &Etherbotix::get_version);
 }

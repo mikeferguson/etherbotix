@@ -34,7 +34,7 @@
 
 using etherbotix::Etherbotix;
 
-int main (int argc, char *argv[])
+int main ()
 {
   uint8_t buffer[256];
   int len = 0;

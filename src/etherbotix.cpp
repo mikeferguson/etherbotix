@@ -165,7 +165,7 @@ void Etherbotix::handle_receive(
         recv_buffer_[2] != 'O' ||
         recv_buffer_[3] != 'T')
     {
-      //RCLCPP_WARN(logger_, "Invalid MAGIC found!");
+      // Invalid ethernet header
       bytes_transferred = 0;
     }
 
@@ -175,7 +175,7 @@ void Etherbotix::handle_receive(
       if (recv_buffer_[idx++] != 0xff ||
           recv_buffer_[idx++] != 0xff)
       {
-        //RCLCPP_WARN(logger_, "Invalid header found!");
+        // Invalid packet header
         break;
       }
 
@@ -183,7 +183,7 @@ void Etherbotix::handle_receive(
       uint8_t len = recv_buffer_[idx++];
       if (idx + len > bytes_transferred)
       {
-        //RCLCPP_WARN(logger_, "Not enough bytes left!");
+        // Not enough bytes left
         break;
       }
 
@@ -194,7 +194,6 @@ void Etherbotix::handle_receive(
 
       // TODO(fergs): handle id != ETHERBOTIX_ID
 
-      //++idx; // error byte
       uint8_t start_addr = recv_buffer_[idx++];
       if (start_addr >= 128)
       {
@@ -206,7 +205,9 @@ void Etherbotix::handle_receive(
             std::stringstream uid;
             for (size_t j = 0; j < 12; j++)
             {
-              uid << std::hex << std::uppercase << std::setw(2) << std::setfill('0') << static_cast<int>(recv_buffer_[idx + j]);
+              uid << std::hex << std::uppercase <<
+                     std::setw(2) << std::setfill('0') <<
+                     static_cast<int>(recv_buffer_[idx + j]);
             }
             unique_id_ = uid.str();
           }

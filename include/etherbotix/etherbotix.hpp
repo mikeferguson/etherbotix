@@ -139,7 +139,7 @@ public:
   int get_digital_dir() { return digital_dir_; }
   int get_user_io_use() { return user_io_use_; }
 
-  // TODO: set digital/analog/etc
+  // TODO(fergs): set digital/analog/etc
 
   /** @brief Get the board system time in milliseconds. */
   uint32_t get_system_time() { return system_time_; }

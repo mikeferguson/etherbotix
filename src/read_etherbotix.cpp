@@ -35,7 +35,7 @@
 
 using etherbotix::Etherbotix;
 
-int main (int argc, char *argv[])
+int main ()
 {
   uint8_t buffer[256];
   int len = 0;
@@ -43,8 +43,10 @@ int main (int argc, char *argv[])
   buffer[len++] = 'B';
   buffer[len++] = 'O';
   buffer[len++] = 'T';
+  // Read full table (128 bytes)
   len += dynamixel::get_read_packet(&buffer[len], Etherbotix::ETHERBOTIX_ID, 0, 128);
-  len += dynamixel::get_read_packet(&buffer[len], Etherbotix::ETHERBOTIX_ID, Etherbotix::DEV_UNIQUE_ID, 12);
+  len += dynamixel::get_read_packet(&buffer[len], Etherbotix::ETHERBOTIX_ID,
+                                    Etherbotix::DEV_UNIQUE_ID, 12);
 
   Etherbotix e;
   while (e.get_system_time() == 0 || e.get_unique_id() == "")
@@ -73,7 +75,7 @@ int main (int argc, char *argv[])
   if (e.getLeftMotor()->get_gains(kp, kd, ki, windup))
   {
     std::cout << "  Gains:        Kp: " << kp << ", Kd: " << kd <<
-                 ", Ki: " << ki << ", Windup: " << windup << std::endl;    
+                 ", Ki: " << ki << ", Windup: " << windup << std::endl;
   }
   std::cout << "Motor 2" << std::endl;
   std::cout << "  Velocity:     " << e.getRightMotor()->getVelocity() << std::endl;
@@ -82,7 +84,7 @@ int main (int argc, char *argv[])
   if (e.getRightMotor()->get_gains(kp, kd, ki, windup))
   {
     std::cout << "  Gains:        Kp: " << kp << ", Kd: " << kd <<
-                 ", Ki: " << ki << ", Windup: " << windup << std::endl;    
+                 ", Ki: " << ki << ", Windup: " << windup << std::endl;
   }
   std::cout << "Motor Period:   " << e.get_motor_period() << "ms" << std::endl;
   std::cout << "Motor Max Step: " << e.get_motor_max_step() << std::endl;
