@@ -50,8 +50,20 @@ EtherbotixROS::EtherbotixROS(const rclcpp::NodeOptions & options)
   // Declare parameters
   ip_ = this->declare_parameter<std::string>("ip_address", ip_);
   port_ = this->declare_parameter<int>("port", port_);
-  milliseconds_ = this->declare_parameter<int>("update_interval_ms", 10);
   RCLCPP_INFO(logger_, "Connecting to Etherbotix at %s:%d", ip_.c_str(), port_);
+
+  milliseconds_ = this->declare_parameter<int>("update_interval_ms", 10);
+
+  bool use_imu = this->declare_parameter<bool>("imu", true);
+  imu_frame_id_ = this->declare_parameter<std::string>("imu.frame_id", "imu_link");
+
+  // These default to 0.0 - if not set by user they will be set
+  // later when we know the version of IMU on the board.
+  gyro_scale_ = this->declare_parameter<double>("imu.gyro.scale", 0.0);
+  gyro_covariance_ = this->declare_parameter<double>("imu.gyro.covariance", 0.0);
+  accel_scale_ = this->declare_parameter<double>("imu.accel.scale", 0.0);
+  accel_covariance_ = this->declare_parameter<double>("imu.accel.covariance", 0.0);
+  mag_scale_ = this->declare_parameter<double>("imu.mag.scale", 0.0);
 
   // Setup motors
   double ticks_per_radian = this->declare_parameter<double>("ticks_per_radian", 1.0);
@@ -78,6 +90,11 @@ EtherbotixROS::EtherbotixROS(const rclcpp::NodeOptions & options)
   joint_state_pub_ = this->create_publisher<sensor_msgs::msg::JointState>("joint_states", 10);
   publish_timer_ = this->create_wall_timer(std::chrono::milliseconds(20),
                                            std::bind(&EtherbotixROS::publish, this));
+  if (use_imu)
+  {
+    imu_pub_ = this->create_publisher<sensor_msgs::msg::Imu>("imu/raw", 10);
+    mag_pub_ = this->create_publisher<sensor_msgs::msg::MagneticField>("mag/raw", 10);
+  }
 }
 
 EtherbotixROS::~EtherbotixROS()
@@ -136,8 +153,11 @@ void EtherbotixROS::publish()
     return;
   }
 
+  auto now = this->now();
+
+  // Publish joint states
   sensor_msgs::msg::JointState msg;
-  msg.header.stamp = this->now();
+  msg.header.stamp = now;
 
   msg.name.push_back(left_motor_->getName());
   msg.position.push_back(left_motor_->getPosition());
@@ -150,6 +170,82 @@ void EtherbotixROS::publish()
   msg.effort.push_back(right_motor_->getEffort());
 
   joint_state_pub_->publish(msg);
+
+  // Publish IMU data
+  if (imu_pub_ && this->get_imu_version() > 0)
+  {
+    if (gyro_scale_ == 0.0)
+    {
+      if (this->get_imu_version() == 2)
+      {
+        // L3GD20 (2000dps mode)
+        gyro_scale_ = 0.001221111;
+        gyro_covariance_ = 0.004868938;
+        // LSM303DLHC (8g/full scale mode)
+        accel_scale_ = 0.0023957;
+        accel_covariance_ = 0.34644996;
+        // LSM303DLHC (8.1 gauss mode)
+        mag_scale_ = 0.0043478;
+      }
+      else if (this->get_imu_version() == 3)
+      {
+        // L3GD20H (2000dps mode)
+        gyro_scale_ = 0.001221111;
+        gyro_covariance_ = 0.004868938;
+        // LSM303D (8g/full scale mode)
+        accel_scale_ = 0.0023964;
+        accel_covariance_ = 0.34644996;
+        // LSM303D (12 gauss mode)
+        mag_scale_ = 0.000479;
+      }
+      else  // assuming version == 5
+      {
+        // LSM6DS33 (2000dps mode)
+        gyro_scale_ = 0.001221111;
+        gyro_covariance_ = 0.004868938;
+        // LSM6DS33 (8g/full scale mode)
+        accel_scale_ = 0.0023964;
+        accel_covariance_ = 0.34644996;
+        // LIS3MDL (12 gauss mode)
+        mag_scale_ = 0.000438404;
+      }
+    }
+
+    sensor_msgs::msg::Imu imu_msg;
+    imu_msg.header.frame_id = imu_frame_id_;
+    imu_msg.header.stamp = now;
+
+    // Signal no known orientation
+    imu_msg.orientation_covariance[0] = -1.0;
+
+    imu_msg.angular_velocity.x = this->get_imu_gyro_x() * gyro_scale_;
+    imu_msg.angular_velocity.y = this->get_imu_gyro_y() * gyro_scale_;
+    imu_msg.angular_velocity.z = this->get_imu_gyro_z() * gyro_scale_;
+    imu_msg.angular_velocity_covariance[0] = gyro_covariance_;
+    imu_msg.angular_velocity_covariance[4] = gyro_covariance_;
+    imu_msg.angular_velocity_covariance[8] = gyro_covariance_;
+
+    imu_msg.linear_acceleration.x = this->get_imu_acc_x() * accel_scale_;
+    imu_msg.linear_acceleration.y = this->get_imu_acc_y() * accel_scale_;
+    imu_msg.linear_acceleration.z = this->get_imu_acc_z() * accel_scale_;
+    imu_msg.linear_acceleration_covariance[0] = accel_covariance_;
+    imu_msg.linear_acceleration_covariance[4] = accel_covariance_;
+    imu_msg.linear_acceleration_covariance[8] = accel_covariance_;
+
+    imu_pub_->publish(imu_msg);
+
+    sensor_msgs::msg::MagneticField mag_msg;
+    mag_msg.header.frame_id = imu_frame_id_;
+    mag_msg.header.stamp = now;
+
+    mag_msg.magnetic_field.x = this->get_imu_mag_x() * mag_scale_;
+    mag_msg.magnetic_field.y = this->get_imu_mag_y() * mag_scale_;
+    mag_msg.magnetic_field.z = this->get_imu_mag_z() * mag_scale_;
+
+    // TODO(fergs): mag covariance
+
+    mag_pub_->publish(mag_msg);
+  }
 }
 
 }  // namespace etherbotix

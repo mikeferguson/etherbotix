@@ -161,6 +161,14 @@ public:
   EtherbotixMotorPtr getLeftMotor() { return left_motor_; }
   EtherbotixMotorPtr getRightMotor() { return right_motor_; }
 
+  int get_imu_version()
+  {
+    if (imu_flags_ < 0)
+    {
+      return imu_flags_;
+    }
+    return (imu_flags_ & 0x0f);
+  }
   int get_imu_acc_x() { return imu_acc_x_; }
   int get_imu_acc_y() { return imu_acc_y_; }
   int get_imu_acc_z() { return imu_acc_z_; }

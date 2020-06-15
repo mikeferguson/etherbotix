@@ -37,7 +37,9 @@
 
 #include "rclcpp/rclcpp.hpp"
 #include "robot_controllers_interface/controller_manager.h"
+#include "sensor_msgs/msg/imu.hpp"
 #include "sensor_msgs/msg/joint_state.hpp"
+#include "sensor_msgs/msg/magnetic_field.hpp"
 
 namespace etherbotix
 {
@@ -55,9 +57,19 @@ protected:
   /** @brief Publisher update callback. */
   void publish();
 
+  // ROS2 parameters
+  std::string imu_frame_id_;
+  double gyro_scale_;
+  double gyro_covariance_;
+  double accel_scale_;
+  double accel_covariance_;
+  double mag_scale_;
+
   // ROS2 interfaces
   rclcpp::Logger logger_;
+  rclcpp::Publisher<sensor_msgs::msg::Imu>::SharedPtr imu_pub_;
   rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr joint_state_pub_;
+  rclcpp::Publisher<sensor_msgs::msg::MagneticField>::SharedPtr mag_pub_;
   rclcpp::TimerBase::SharedPtr publish_timer_;
   robot_controllers_interface::ControllerManagerPtr controller_manager_;
   bool initialized_;
