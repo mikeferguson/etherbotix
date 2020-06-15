@@ -118,6 +118,15 @@ install(
   DESTINATION "${PYTHON_INSTALL_DIR}/${PROJECT_NAME}"
 )
 
+install(
+  PROGRAMS
+    scripts/get_trace
+    scripts/monitor
+    scripts/read_servo
+    scripts/upload
+  DESTINATION lib/${PROJECT_NAME}
+)
+
 if(BUILD_TESTING)
   find_package(ament_cmake_cpplint)
   ament_cpplint(FILTERS "-whitespace/braces" "-whitespace/newline")

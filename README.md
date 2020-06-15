@@ -11,8 +11,7 @@ upload the new firmware. Be sure to disable drivers before doing this:
 
 ## Monitoring Board Status
 
-In addition to the ROS tools, the low level monitor_etherbotix is
-available.
+In addition to the ROS tools, the low level _monitor_ is available.
 
 ![Monitor](https://raw.githubusercontent.com/mikeferguson/etherbotix_python/master/docs/monitor.png)
 
