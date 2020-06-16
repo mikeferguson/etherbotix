@@ -38,6 +38,12 @@ namespace dynamixel
 constexpr uint8_t AX_READ_DATA = 2;
 constexpr uint8_t AX_WRITE_DATA = 3;
 
+constexpr uint8_t PACKET_HEADER = 0;
+constexpr uint8_t PACKET_HEADER_2 = 1;
+constexpr uint8_t PACKET_ID = 2;
+constexpr uint8_t PACKET_LEN = 3;
+constexpr uint8_t PACKET_INSTR = 4;
+
 inline uint8_t compute_checksum(
   uint8_t* buffer,
   uint8_t length)
@@ -82,6 +88,10 @@ inline int get_baud_rate(uint8_t reg_value)
   else if (reg_value == 34)
   {
     return 57600;
+  }
+  else if (reg_value == 207)
+  {
+    return 9600;
   }
   else if (reg_value == 250)
   {

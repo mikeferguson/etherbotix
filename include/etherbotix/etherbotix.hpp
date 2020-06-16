@@ -31,6 +31,8 @@
 #define ETHERBOTIX__ETHERBOTIX_HPP_
 
 #include <memory>
+#include <mutex>
+#include <queue>
 #include <string>
 
 #include "boost/array.hpp"
@@ -41,8 +43,25 @@
 namespace etherbotix
 {
 
+/** @brief Put the ethernet header in a buffer. */
+uint8_t insert_header(uint8_t * buffer);
+
 class Etherbotix
 {
+  struct Packet
+  {
+    Packet(uint8_t len, const uint8_t * buffer)
+    {
+      size = len;
+      for (size_t i = 0; i < len; ++i)
+      {
+        data[i] = buffer[i];
+      }
+    }
+    uint8_t size;
+    boost::array<uint8_t, 256> data;
+  };
+
 public:
   /*
    * Register table definitions
@@ -179,6 +198,9 @@ public:
   int get_imu_mag_y() { return imu_mag_y_; }
   int get_imu_mag_z() { return imu_mag_z_; }
 
+  int get_usart3_baud() { return usart3_baud_; }
+  int get_usart3_char() { return usart3_char_; }
+
   int get_tim12_mode() { return tim12_mode_; }
   int get_tim12_count() { return tim12_count_; }
 
@@ -189,6 +211,9 @@ public:
 
   /** @brief Send a packet to Etherbotix. */
   void send(const uint8_t * buffer, size_t len);
+
+  /** @brief Get a packet into buffer. */
+  uint8_t get(uint8_t * buffer);
 
 protected:
   /** @brief Gets called at a periodic rate, updates everything. */
@@ -212,7 +237,11 @@ protected:
 
   boost::asio::ip::udp::socket socket_;
   boost::asio::ip::udp::endpoint remote_endpoint_;
-  boost::array<uint8_t, 255> recv_buffer_;
+  boost::array<uint8_t, 256> recv_buffer_;
+
+  // Packets from devices
+  std::mutex packets_mutex_;
+  std::queue<Packet> packets_;
 
   // 100hz timer for sending new data request
   boost::asio::deadline_timer update_timer_;

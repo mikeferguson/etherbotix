@@ -39,10 +39,7 @@ int main ()
 {
   uint8_t buffer[256];
   int len = 0;
-  buffer[len++] = 0xff;
-  buffer[len++] = 'B';
-  buffer[len++] = 'O';
-  buffer[len++] = 'T';
+  len = etherbotix::insert_header(buffer);
   // Read full table (128 bytes)
   len += dynamixel::get_read_packet(&buffer[len], Etherbotix::ETHERBOTIX_ID, 0, 128);
   len += dynamixel::get_read_packet(&buffer[len], Etherbotix::ETHERBOTIX_ID,
@@ -98,6 +95,8 @@ int main ()
   std::cout << "  Magnetometer: " << e.get_imu_mag_x() << ", " <<
                                      e.get_imu_mag_y() << ", " <<
                                      e.get_imu_mag_z() << std::endl;
+  std::cout << "Usart3 Baud:    " << e.get_usart3_baud() << std::endl;
+  std::cout << "Usart3 Char:    " << e.get_usart3_char() << std::endl;
   std::cout << "Tim12 Mode:     " << e.get_tim12_mode() << std::endl;
   if (e.get_tim12_mode() == 1)
   {

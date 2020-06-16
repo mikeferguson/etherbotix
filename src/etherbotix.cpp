@@ -48,6 +48,15 @@ using boost::asio::ip::udp;
 namespace etherbotix
 {
 
+uint8_t insert_header(uint8_t * buffer)
+{
+  buffer[0] = 0xff;
+  buffer[1] = 'B';
+  buffer[2] = 'O';
+  buffer[3] = 'T';
+  return 4;
+}
+
 Etherbotix::Etherbotix(const std::string & ip, int port, int millisecond)
 : socket_(io_service_),
   update_timer_(io_service_, boost::posix_time::milliseconds(millisecond)),
@@ -102,7 +111,7 @@ Etherbotix::Etherbotix(const std::string & ip, int port, int millisecond)
   start_receive();
 
   // Start a thread
-  std::thread{boost::bind(&Etherbotix::io_thread, this)}.detach();
+  std::thread{std::bind(&Etherbotix::io_thread, this)}.detach();
 }
 
 Etherbotix::~Etherbotix()
@@ -117,12 +126,42 @@ void Etherbotix::send(const uint8_t * buffer, size_t len)
     udp::endpoint(boost::asio::ip::address::from_string(ip_), port_);
   try
   {
-    socket_.send_to(boost::asio::buffer(buffer, len), receiver_endpoint);
+    if (buffer[1] == 'B' && buffer[2] == 'O' && buffer[3] == 'T' && buffer[0] == 0xff)
+    {
+      // Send without copy
+      socket_.send_to(boost::asio::buffer(buffer, len), receiver_endpoint);
+      return;
+    }
+
+    // Need to copy and add header
+    uint8_t b[256];
+    uint8_t b_len = insert_header(b);
+    for (size_t i = 0; i <  len; ++i)
+    {
+      b[b_len++] = b[i];
+    }
+    socket_.send_to(boost::asio::buffer(b, b_len), receiver_endpoint);
   }
   catch (std::exception & e)
   {
     std::cerr << e.what() << std::endl;
   }
+}
+
+uint8_t Etherbotix::get(uint8_t * buffer)
+{
+  std::lock_guard<std::mutex> lock(packets_mutex_);
+  if (!packets_.empty())
+  {
+    uint8_t len = packets_.front().size;
+    for (uint8_t i = 0; i < len; ++i)
+    {
+      buffer[i] = packets_.front().data[i];
+    }
+    packets_.pop();
+    return len;
+  }
+  return 0;
 }
 
 void Etherbotix::update(const boost::system::error_code & /*e*/)
@@ -156,7 +195,6 @@ void Etherbotix::handle_receive(
   const boost::system::error_code & error,
   std::size_t bytes_transferred)
 {
-  // This catches all the data, just print it for demo
   if (!error || error == boost::asio::error::message_size)
   {
     // Process response
@@ -172,6 +210,8 @@ void Etherbotix::handle_receive(
     size_t idx = 4;
     while (idx < bytes_transferred)
     {
+      size_t start = idx;
+
       if (recv_buffer_[idx++] != 0xff ||
           recv_buffer_[idx++] != 0xff)
       {
@@ -192,7 +232,14 @@ void Etherbotix::handle_receive(
       // Set length to just the parameters
       len -= 2;
 
-      // TODO(fergs): handle id != ETHERBOTIX_ID
+      // Handle packets from servos, etc
+      if (id != ETHERBOTIX_ID)
+      {
+        std::lock_guard<std::mutex> lock(packets_mutex_);
+        packets_.emplace(Packet(len + 6, &recv_buffer_[start]));
+        idx += len + 1;
+        continue;
+      }
 
       uint8_t start_addr = recv_buffer_[idx++];
       if (start_addr >= 128)
@@ -214,6 +261,9 @@ void Etherbotix::handle_receive(
         }
 
         // Not a valid device, but no need to process it as regular table below
+        std::lock_guard<std::mutex> lock(packets_mutex_);
+        packets_.emplace(Packet(len + 6, &recv_buffer_[start]));
+        idx += len + 1;
         continue;
       }
 

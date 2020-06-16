@@ -27,11 +27,6 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-/*
- * based on http://www.boost.org/doc/libs/1_53_0/doc/html/boost_asio/tutorial.html
- *      and http://www.boost.org/doc/libs/1_53_0/doc/html/boost_asio/tutorial/tuttimer3.html
- */
-
 #include <string>
 
 #include "etherbotix/etherbotix_ros.hpp"

@@ -19,6 +19,7 @@ endif()
 find_package(PythonLibs REQUIRED)
 find_package(Boost REQUIRED python3 system thread)
 find_package(ament_cmake REQUIRED)
+find_package(nmea_msgs REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(rclcpp_components REQUIRED)
 find_package(robot_controllers_interface REQUIRED)
@@ -66,6 +67,25 @@ ament_target_dependencies(etherbotix_py
   robot_controllers_interface
 )
 
+add_library(gps_publisher SHARED
+  src/gps_publisher.cpp
+)
+target_link_libraries(gps_publisher
+  etherbotix
+  ${Boost_LIBRARIES}
+)
+ament_target_dependencies(gps_publisher
+  nmea_msgs
+  rclcpp
+  rclcpp_components
+  robot_controllers_interface
+  sensor_msgs
+)
+rclcpp_components_register_node(gps_publisher
+  PLUGIN "etherbotix::GpsPublisher"
+  EXECUTABLE gps_publisher_node
+)
+
 add_executable(read_etherbotix src/read_etherbotix.cpp)
 target_link_libraries(read_etherbotix
   etherbotix
@@ -105,6 +125,7 @@ ament_target_dependencies(reboot
 install(
   TARGETS
     etherbotix
+    gps_publisher
     read_etherbotix
     read_unique_id
     reboot

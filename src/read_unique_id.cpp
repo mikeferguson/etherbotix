@@ -38,11 +38,7 @@ using etherbotix::Etherbotix;
 int main ()
 {
   uint8_t buffer[256];
-  int len = 0;
-  buffer[len++] = 0xff;
-  buffer[len++] = 'B';
-  buffer[len++] = 'O';
-  buffer[len++] = 'T';
+  int len = etherbotix::insert_header(buffer);
   // Read 12 bytes from the Unique ID device
   len += dynamixel::get_read_packet(&buffer[len], Etherbotix::ETHERBOTIX_ID,
                                     Etherbotix::DEV_UNIQUE_ID, 12);
