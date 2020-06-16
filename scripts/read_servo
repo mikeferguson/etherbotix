@@ -1,6 +1,6 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
-# Copyright (c) 2014 Michael Ferguson
+# Copyright (c) 2014-2020 Michael Ferguson
 # Copyright (c) 2008-2013 Vanadium Labs LLC.
 # All right reserved.
 #
@@ -28,12 +28,16 @@
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import time, sys
-from etherbotix_python.ax12 import *
-from etherbotix_python.etherbotix import *
+from etherbotix import Etherbotix
+
+P_PRESENT_POSITION_L = 36
 
 if __name__ == "__main__":
-    e = Etherbotix()
+    e = Etherbotix("192.168.0.42", 6707)
     if len(sys.argv) > 1:
-        print(e.getPosition(int(sys.argv[1])))
+        packet = e.read(int(sys.argv[1]), P_PRESENT_POSITION_L, 2)
     else:
-        print(e.getPosition(1))
+        packet = e.read(1, P_PRESENT_POSITION_L, 2)
+
+    position = int(packet[5]) + (int(packet[6])<<8)
+    print(position)
