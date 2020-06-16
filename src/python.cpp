@@ -83,6 +83,48 @@ public:
         reinterpret_cast<char*>(buffer), len, PyBUF_READ)));
     return o;
   }
+
+  // All-in-one to update the state
+  int update()
+  {
+    int packets_sent = 0;
+    uint8_t buffer[256];
+    int len = 0;
+    len = etherbotix::insert_header(buffer);
+    // Read full table
+    len += dynamixel::get_read_packet(&buffer[len], ETHERBOTIX_ID, 0, 128);
+    ++packets_sent;
+    // Make sure unique ID is filled in
+    if (this->get_unique_id().empty())
+    {
+      len += dynamixel::get_read_packet(&buffer[len], ETHERBOTIX_ID,
+                                        DEV_UNIQUE_ID, 12);
+      ++packets_sent;
+    }
+    this->send(buffer, len);
+    return packets_sent;
+  }
+
+  // NOTE: since ticks_per_radian is 1, these return raw ticks
+  int get_motor1_vel()
+  {
+    return this->getLeftMotor()->getVelocity();
+  }
+
+  int get_motor1_pos()
+  {
+    return this->getLeftMotor()->getPosition();
+  }
+
+  int get_motor2_vel()
+  {
+    return this->getRightMotor()->getVelocity();
+  }
+
+  int get_motor2_pos()
+  {
+    return this->getRightMotor()->getPosition();
+  }
 };
 
 BOOST_PYTHON_MODULE(etherbotix_py)
@@ -90,8 +132,46 @@ BOOST_PYTHON_MODULE(etherbotix_py)
   boost::python::class_<EtherbotixWrapper, boost::noncopyable>(
        "Etherbotix",
        boost::python::init<const std::string&, int>())
+    .def("get_version", &EtherbotixWrapper::get_version)
+    .def("get_baud_rate", &EtherbotixWrapper::get_baud_rate)
+    .def("get_digital_in", &EtherbotixWrapper::get_digital_in)
+    .def("get_digital_out", &EtherbotixWrapper::get_digital_out)
+    .def("get_digital_dir", &EtherbotixWrapper::get_digital_dir)
+    .def("get_user_io_use", &EtherbotixWrapper::get_user_io_use)
+    .def("get_analog0", &EtherbotixWrapper::get_analog0)
+    .def("get_analog1", &EtherbotixWrapper::get_analog1)
+    .def("get_analog2", &EtherbotixWrapper::get_analog2)
+    .def("get_system_time", &EtherbotixWrapper::get_system_time)
+    .def("get_servo_current", &EtherbotixWrapper::get_servo_current)
+    .def("get_aux_current", &EtherbotixWrapper::get_aux_current)
+    .def("get_system_voltage", &EtherbotixWrapper::get_system_voltage)
+    .def("get_motor_period", &EtherbotixWrapper::get_motor_period)
+    .def("get_motor_max_step", &EtherbotixWrapper::get_motor_max_step)
+    .def("get_motor1_pos", &EtherbotixWrapper::get_motor1_pos)
+    .def("get_motor1_vel", &EtherbotixWrapper::get_motor1_vel)
+    .def("get_motor2_pos", &EtherbotixWrapper::get_motor2_pos)
+    .def("get_motor2_vel", &EtherbotixWrapper::get_motor2_vel)
+    .def("get_imu_version", &EtherbotixWrapper::get_imu_version)
+    .def("get_imu_flags", &EtherbotixWrapper::get_imu_flags)
+    .def("get_imu_acc_x", &EtherbotixWrapper::get_imu_acc_x)
+    .def("get_imu_acc_y", &EtherbotixWrapper::get_imu_acc_y)
+    .def("get_imu_acc_z", &EtherbotixWrapper::get_imu_acc_z)
+    .def("get_imu_gyro_x", &EtherbotixWrapper::get_imu_gyro_x)
+    .def("get_imu_gyro_y", &EtherbotixWrapper::get_imu_gyro_y)
+    .def("get_imu_gyro_z", &EtherbotixWrapper::get_imu_gyro_z)
+    .def("get_imu_mag_x", &EtherbotixWrapper::get_imu_mag_x)
+    .def("get_imu_mag_y", &EtherbotixWrapper::get_imu_mag_y)
+    .def("get_imu_mag_z", &EtherbotixWrapper::get_imu_mag_z)
+    .def("get_usart3_baud", &EtherbotixWrapper::get_usart3_baud)
+    .def("get_usart3_char", &EtherbotixWrapper::get_usart3_char)
+    .def("get_tim12_mode", &EtherbotixWrapper::get_tim12_mode)
+    .def("get_tim12_count", &EtherbotixWrapper::get_tim12_count)
+    .def("get_packets_recv", &EtherbotixWrapper::get_packets_recv)
+    .def("get_packets_bad", &EtherbotixWrapper::get_packets_bad)
+    .def("get_unique_id", &EtherbotixWrapper::get_unique_id)
     .def("read", &EtherbotixWrapper::read)
-    .def("write", &EtherbotixWrapper::write);
+    .def("write", &EtherbotixWrapper::write)
+    .def("update", &EtherbotixWrapper::update);
 
     // TODO(fergs): figure out how to wrap the constexpr
     // .def_readonly("DEV_M1_TRACE", &EtherbotixWrapper::DEV_M1_TRACE)

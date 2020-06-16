@@ -158,7 +158,11 @@ public:
   int get_digital_dir() { return digital_dir_; }
   int get_user_io_use() { return user_io_use_; }
 
-  // TODO(fergs): set digital/analog/etc
+  // TODO(fergs): set digital
+
+  int get_analog0() { return analog0_; }
+  int get_analog1() { return analog1_; }
+  int get_analog2() { return analog2_; }
 
   /** @brief Get the board system time in milliseconds. */
   uint32_t get_system_time() { return system_time_; }
@@ -188,6 +192,7 @@ public:
     }
     return (imu_flags_ & 0x0f);
   }
+  int get_imu_flags() { return imu_flags_; }
   int get_imu_acc_x() { return imu_acc_x_; }
   int get_imu_acc_y() { return imu_acc_y_; }
   int get_imu_acc_z() { return imu_acc_z_; }
