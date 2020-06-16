@@ -8,8 +8,10 @@ import argparse, struct
 import matplotlib.pyplot as plot
 from math import cos, sin, radians
 
-from etherbotix_python.ax12 import AX_READ_DATA
-from etherbotix_python.etherbotix import Etherbotix
+from etherbotix import Etherbotix
+
+P_DEVICE_M1_TRACE = 194
+P_DEVICE_M2_TRACE = 195
 
 def plot_trace(pos, vel, set, cmd):
     # Plot Trace
@@ -54,18 +56,18 @@ if __name__ == "__main__":
         plot_trace(pos, vel, set, cmd)
 
     else:
-        e = Etherbotix()
+        e = Etherbotix("192.168.0.42", 6707)
         traces = []
 
         if args.left:
             # Latch a trace on left motor
-            e.write(253, e.P_DEVICE_M1_TRACE, [1])
-            traces.append(e.P_DEVICE_M1_TRACE)
+            e.write(253, P_DEVICE_M1_TRACE, [1])
+            traces.append(P_DEVICE_M1_TRACE)
             print("Latched a trace from left motor")
         if args.right:
             # Latch a trace on right motor
-            e.write(253, e.P_DEVICE_M2_TRACE, [1])
-            traces.append(e.P_DEVICE_M2_TRACE)
+            e.write(253, P_DEVICE_M2_TRACE, [1])
+            traces.append(P_DEVICE_M2_TRACE)
             print("Latched a trace from right motor")
 
         # Read out trace(s)
@@ -78,14 +80,14 @@ if __name__ == "__main__":
 
             while (1):
                 packet = e.read(253, addr, 128)
-                if packet == None or len(packet) == 0:
+                if packet == None or len(packet) == 0 or packet[3] == 2:
                     if len(pos) == 0:
                         print("No trace read - is firmware at least v3?")
                     # Done reading
                     break
 
-                i = 0
-                while i < len(packet):
+                i = 5
+                while i < len(packet) - 1:
                     p = struct.unpack_from("<i", packet, i+0)[0]
                     v = struct.unpack_from("<i", packet, i+4)[0]
                     s = struct.unpack_from("<i", packet, i+8)[0]

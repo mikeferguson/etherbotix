@@ -138,7 +138,7 @@ void Etherbotix::send(const uint8_t * buffer, size_t len)
     uint8_t b_len = insert_header(b);
     for (size_t i = 0; i <  len; ++i)
     {
-      b[b_len++] = b[i];
+      b[b_len++] = buffer[i];
     }
     socket_.send_to(boost::asio::buffer(b, b_len), receiver_endpoint);
   }
