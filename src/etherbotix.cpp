@@ -32,6 +32,7 @@
  *      and http://www.boost.org/doc/libs/1_53_0/doc/html/boost_asio/tutorial/tuttimer3.html
  */
 
+#include <memory>
 #include <string>
 #include <sstream>
 #include <thread>
@@ -100,8 +101,8 @@ Etherbotix::Etherbotix(const std::string & ip, int port, int millisecond)
   unique_id_("")
 {
   // Setup motors
-  left_motor_.reset(new EtherbotixMotor("lf_wheel_joint", 1));
-  right_motor_.reset(new EtherbotixMotor("rf_wheel_joint", 1));
+  left_motor_ = std::make_shared<EtherbotixMotor>("l_wheel_joint", 1);
+  right_motor_ = std::make_shared<EtherbotixMotor>("r_wheel_joint", 1);
 
   // Periodic update through a boost::asio timer
   update_timer_.async_wait(boost::bind(&Etherbotix::update, this, _1));
