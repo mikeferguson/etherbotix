@@ -34,6 +34,7 @@ include_directories(
 )
 
 add_library(etherbotix SHARED
+  src/dynamixel_servo.cpp
   src/etherbotix.cpp
   src/etherbotix_motor.cpp
   src/etherbotix_ros.cpp

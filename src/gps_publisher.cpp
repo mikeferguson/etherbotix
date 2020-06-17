@@ -77,7 +77,7 @@ private:
       buffer[5] = 0xff;
       buffer[6] = ETHERBOTIX_ID;
       buffer[7] = 5;  // Length of remaining packet
-      buffer[8] = dynamixel::AX_WRITE_DATA;
+      buffer[8] = dynamixel::WRITE_DATA;
       buffer[9] = REG_USART3_BAUD;
       buffer[10] = 207;
       buffer[11] = '\n';

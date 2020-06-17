@@ -32,8 +32,10 @@
 
 #include <memory>
 #include <string>
+#include <vector>
 
 #include "etherbotix/etherbotix.hpp"
+#include "etherbotix/dynamixel_servo.hpp"
 
 #include "rclcpp/rclcpp.hpp"
 #include "robot_controllers_interface/controller_manager.h"
@@ -56,6 +58,9 @@ protected:
 
   /** @brief Publisher update callback. */
   void publish();
+
+  // Dynamixel Servos
+  std::vector<DynamixelServoPtr> servos_;
 
   // ROS2 parameters
   std::string imu_frame_id_;

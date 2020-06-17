@@ -52,7 +52,7 @@ public:
     buffer[1] = 0xff;
     buffer[2] = id;
     buffer[3] = len + 3;
-    buffer[4] = dynamixel::AX_WRITE_DATA;
+    buffer[4] = dynamixel::WRITE_DATA;
     buffer[5] = start_addr;
     for (size_t i = 0; i < len; ++i)
     {

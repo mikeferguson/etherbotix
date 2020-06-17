@@ -27,7 +27,9 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <memory>
 #include <string>
+#include <vector>
 
 #include "etherbotix/etherbotix_ros.hpp"
 #include "etherbotix/copy_float.hpp"
@@ -61,9 +63,13 @@ EtherbotixROS::EtherbotixROS(const rclcpp::NodeOptions & options)
   mag_scale_ = this->declare_parameter<double>("imu.mag.scale", 0.0);
 
   // Setup motors
+  std::string l_motor_name = this->declare_parameter<std::string>("l_motor_name",
+                                                                  "l_wheel_joint");
+  std::string r_motor_name = this->declare_parameter<std::string>("r_motor_name",
+                                                                  "r_wheel_joint");
   double ticks_per_radian = this->declare_parameter<double>("ticks_per_radian", 1.0);
-  left_motor_->set_ticks_per_radian(ticks_per_radian);
-  right_motor_->set_ticks_per_radian(ticks_per_radian);
+  left_motor_ = std::make_shared<EtherbotixMotor>(l_motor_name, ticks_per_radian);
+  right_motor_ = std::make_shared<EtherbotixMotor>(r_motor_name, ticks_per_radian);
 
   double kp = this->declare_parameter<double>("motor_kp", 1.0);
   double kd = this->declare_parameter<double>("motor_kd", 0.0);
@@ -74,12 +80,44 @@ EtherbotixROS::EtherbotixROS(const rclcpp::NodeOptions & options)
   right_motor_->set_gains(kp, kd, ki, kw);
 
   // Controller manager
-  controller_manager_.reset(new robot_controllers_interface::ControllerManager());
+  controller_manager_ = std::make_shared<robot_controllers_interface::ControllerManager>();
   robot_controllers_interface::JointHandlePtr j;
   j = std::static_pointer_cast<robot_controllers_interface::JointHandle>(left_motor_);
   controller_manager_->addJointHandle(j);
   j = std::static_pointer_cast<robot_controllers_interface::JointHandle>(right_motor_);
   controller_manager_->addJointHandle(j);
+
+  // Dynamixel joints
+  std::vector<std::string> joint_names =
+    this->declare_parameter<std::vector<std::string>>("servo_joints", std::vector<std::string>());
+  servos_.reserve(joint_names.size());
+  for (auto joint : joint_names)
+  {
+    int id = this->declare_parameter<int>(joint + ".id", 1);
+    bool invert = this->declare_parameter<bool>(joint + ".invert", false);
+    auto servo = std::make_shared<DynamixelServo>(joint, id, invert);
+
+    int ticks = this->declare_parameter<int>(joint + ".ticks", 1024);
+    double range = this->declare_parameter<double>(joint + ".range", dynamixel::AX_SERVO_RANGE);
+    servo->setResolution(ticks, range);
+
+    int center = this->declare_parameter<int>(joint + ".center", ticks / 2);
+    servo->setCenter(center);
+
+    double min_pos = this->declare_parameter<double>(joint + ".min_pos",
+                                                     -dynamixel::AX_SERVO_RANGE / 2.0);
+    double max_pos = this->declare_parameter<double>(joint + ".max_pos",
+                                                     dynamixel::AX_SERVO_RANGE / 2.0);
+    double max_vel = this->declare_parameter<double>(joint + ".max_vel",
+                                                     dynamixel::AX_SERVO_MAX_VEL);
+    servo->setLimits(min_pos, max_pos, max_vel);
+
+    j = std::static_pointer_cast<robot_controllers_interface::JointHandle>(servo);
+    controller_manager_->addJointHandle(j);
+    servos_.push_back(servo);
+    RCLCPP_INFO(logger_, "Adding DynamixelServo: %s with ID %d",
+                servo->getName().c_str(), servo->getId());
+  }
 
   // ROS interfaces
   joint_state_pub_ = this->create_publisher<sensor_msgs::msg::JointState>("joint_states", 10);
@@ -111,9 +149,40 @@ void EtherbotixROS::update(const boost::system::error_code & e)
     initialized_ = true;
   }
 
-  // Reset joint handle commands
-  left_motor_->reset();
-  right_motor_->reset();
+  // Process messages for servos
+  while (rclcpp::ok())
+  {
+    uint8_t buffer[256];
+    uint8_t len = get(buffer);
+    if (len == 0)
+    {
+      break;
+    }
+
+    // Parse return packet
+    uint8_t id = buffer[dynamixel::PACKET_ID];
+    if (id != dynamixel::BROADCAST_ID)
+    {
+      RCLCPP_ERROR(logger_, "Got unexpected packet for %d", id);
+      continue;
+    }
+
+    uint64_t now = this->now().nanoseconds();
+
+    uint8_t i = 5;
+    for (auto servo : servos_)
+    {
+      if (i + 1 >= len)
+      {
+        RCLCPP_ERROR(logger_, "Not enough bytes to update %s", servo->getName().c_str());
+        continue;
+      }
+
+      int position = buffer[i] + (buffer[i+1] << 8);
+      servo->updateFromPacket(position, now);
+      i += 2;
+    }
+  }
 
   // Update controllers
   uint64_t nanoseconds = milliseconds_ * 1e6;
@@ -135,6 +204,40 @@ void EtherbotixROS::update(const boost::system::error_code & e)
   length += right_motor_->get_packets(&send_buf[length], 2);
   length += left_motor_->get_packets(&send_buf[length], 1);
 
+  // Get servo update packets
+  if (!servos_.empty())
+  {
+    std::vector<uint8_t> servo_ids;
+
+    // Sync write position commands to controlled servos
+    std::vector<std::vector<uint8_t>> sync_write;
+    for (auto servo : servos_)
+    {
+      servo_ids.push_back(servo->getId());
+      if (servo->hasCommand())
+      {
+        int pos = servo->getDesiredPosition();
+        std::vector<uint8_t> update;
+        update.push_back(servo->getId());
+        update.push_back(pos % 256);
+        update.push_back(pos >> 8);
+        sync_write.push_back(update);
+      }
+    }
+
+    length += dynamixel::get_sync_write_packet(
+      &send_buf[length],
+      dynamixel::GOAL_POSITION_L,
+      sync_write);
+
+    // Sync read position
+    length += dynamixel::get_sync_read_packet(
+      &send_buf[length],
+      servo_ids,
+      dynamixel::PRESENT_POSITION_L,
+      2);
+  }
+
   this->send(send_buf, length);
 
   // Reset timer and async wait
@@ -153,17 +256,15 @@ void EtherbotixROS::publish()
   // Publish joint states
   sensor_msgs::msg::JointState msg;
   msg.header.stamp = now;
-
-  msg.name.push_back(left_motor_->getName());
-  msg.position.push_back(left_motor_->getPosition());
-  msg.velocity.push_back(left_motor_->getVelocity());
-  msg.effort.push_back(left_motor_->getEffort());
-
-  msg.name.push_back(right_motor_->getName());
-  msg.position.push_back(right_motor_->getPosition());
-  msg.velocity.push_back(right_motor_->getVelocity());
-  msg.effort.push_back(right_motor_->getEffort());
-
+  auto joint_names = controller_manager_->getJointNames();
+  for (auto name : joint_names)
+  {
+    auto j = controller_manager_->getJointHandle(name);
+    msg.name.push_back(j->getName());
+    msg.position.push_back(j->getPosition());
+    msg.velocity.push_back(j->getVelocity());
+    msg.effort.push_back(j->getEffort());
+  }
   joint_state_pub_->publish(msg);
 
   // Publish IMU data

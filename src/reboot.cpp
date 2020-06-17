@@ -42,7 +42,7 @@ int main ()
   buffer[len++] = 0xff;
   buffer[len++] = Etherbotix::ETHERBOTIX_ID;
   buffer[len++] = 7;  // Length of remaining packet
-  buffer[len++] = dynamixel::AX_WRITE_DATA;
+  buffer[len++] = dynamixel::WRITE_DATA;
   buffer[len++] = Etherbotix::DEV_BOOTLOADER;
   buffer[len++] = 'B';
   buffer[len++] = 'O';

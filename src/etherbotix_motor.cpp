@@ -133,7 +133,7 @@ uint8_t EtherbotixMotor::get_packets(uint8_t * buffer, int motor_idx)
   buffer[len++] = 0xff;
   buffer[len++] = Etherbotix::ETHERBOTIX_ID;
   buffer[len++] = 5;  // Length of remaining packet
-  buffer[len++] = dynamixel::AX_WRITE_DATA;
+  buffer[len++] = dynamixel::WRITE_DATA;
   if (motor_idx == 1)
   {
     buffer[len++] = Etherbotix::REG_MOTOR1_VEL;
@@ -160,7 +160,7 @@ uint8_t EtherbotixMotor::get_packets(uint8_t * buffer, int motor_idx)
       buffer[len++] = 0xff;
       buffer[len++] = Etherbotix::ETHERBOTIX_ID;
       buffer[len++] = 19;
-      buffer[len++] = dynamixel::AX_WRITE_DATA;
+      buffer[len++] = dynamixel::WRITE_DATA;
       if (motor_idx == 1)
       {
         buffer[len++] = Etherbotix::REG_MOTOR1_KP;
