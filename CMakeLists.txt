@@ -124,6 +124,11 @@ ament_target_dependencies(reboot
 )
 
 install(
+  DIRECTORY include/
+  DESTINATION include
+)
+
+install(
   TARGETS
     etherbotix
     gps_publisher
@@ -154,4 +159,12 @@ if(BUILD_TESTING)
   ament_cpplint(FILTERS "-whitespace/braces" "-whitespace/newline")
 endif()
 
+ament_export_include_directories(include)
+ament_export_libraries(etherbotix)
+ament_export_dependencies(
+  rclcpp
+  rclcpp_components
+  robot_controllers_interface
+  sensor_msgs
+)
 ament_package()
