@@ -128,23 +128,12 @@ uint8_t EtherbotixMotor::get_packets(uint8_t * buffer, int motor_idx)
     return 0;
   }
 
-  uint8_t len = 0;
-  buffer[len++] = 0xff;
-  buffer[len++] = 0xff;
-  buffer[len++] = Etherbotix::ETHERBOTIX_ID;
-  buffer[len++] = 5;  // Length of remaining packet
-  buffer[len++] = dynamixel::WRITE_DATA;
-  if (motor_idx == 1)
-  {
-    buffer[len++] = Etherbotix::REG_MOTOR1_VEL;
-  }
-  else
-  {
-    buffer[len++] = Etherbotix::REG_MOTOR2_VEL;
-  }
-  buffer[len++] = (desired_velocity_ & 0xff);
-  buffer[len++] = (desired_velocity_ >> 8);
-  buffer[len++] = dynamixel::compute_checksum(buffer, 9);
+  uint8_t len = dynamixel::get_write_packet(
+    buffer,
+    Etherbotix::ETHERBOTIX_ID,
+    (motor_idx == 1) ? Etherbotix::REG_MOTOR1_VEL : Etherbotix::REG_MOTOR2_VEL,
+    {static_cast<uint8_t>(desired_velocity_ & 0xff),
+     static_cast<uint8_t>(desired_velocity_ >> 8)});
 
   // Update gains if needed
   if (kp_ != desired_kp_ ||
@@ -155,29 +144,16 @@ uint8_t EtherbotixMotor::get_packets(uint8_t * buffer, int motor_idx)
     if (kp_ >= 0.0 && kd_ >= 0.0 && ki_ >= 0.0 &&
         desired_kp_ >= 0.0 && desired_kd_ >= 0.0 && desired_ki_ >= 0.0)
     {
-      uint8_t start = len;
-      buffer[len++] = 0xff;
-      buffer[len++] = 0xff;
-      buffer[len++] = Etherbotix::ETHERBOTIX_ID;
-      buffer[len++] = 19;
-      buffer[len++] = dynamixel::WRITE_DATA;
-      if (motor_idx == 1)
-      {
-        buffer[len++] = Etherbotix::REG_MOTOR1_KP;
-      }
-      else
-      {
-        buffer[len++] = Etherbotix::REG_MOTOR2_KP;
-      }
-      copy_float(desired_kp_, buffer[len]);
-      len += 4;
-      copy_float(desired_kd_, buffer[len]);
-      len += 4;
-      copy_float(desired_ki_, buffer[len]);
-      len += 4;
-      copy_float(desired_windup_, buffer[len]);
-      len += 4;
-      buffer[len++] = dynamixel::compute_checksum(&buffer[start], 20);
+      std::vector<uint8_t> params;
+      copy_float(desired_kp_, params);
+      copy_float(desired_kd_, params);
+      copy_float(desired_ki_, params);
+      copy_float(desired_windup_, params);
+      len += dynamixel::get_write_packet(
+        &buffer[len],
+        Etherbotix::ETHERBOTIX_ID,
+        (motor_idx == 1) ? Etherbotix::REG_MOTOR1_KP : Etherbotix::REG_MOTOR2_KP,
+        params);
     }
   }
 

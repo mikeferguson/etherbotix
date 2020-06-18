@@ -38,17 +38,11 @@ int main ()
 {
   uint8_t buffer[256];
   int len = etherbotix::insert_header(buffer);
-  buffer[len++] = 0xff;
-  buffer[len++] = 0xff;
-  buffer[len++] = Etherbotix::ETHERBOTIX_ID;
-  buffer[len++] = 7;  // Length of remaining packet
-  buffer[len++] = dynamixel::WRITE_DATA;
-  buffer[len++] = Etherbotix::DEV_BOOTLOADER;
-  buffer[len++] = 'B';
-  buffer[len++] = 'O';
-  buffer[len++] = 'O';
-  buffer[len++] = 'T';
-  buffer[len++] = dynamixel::compute_checksum(&buffer[4], 11);
+  len += dynamixel::get_write_packet(
+    &buffer[len],
+    Etherbotix::ETHERBOTIX_ID,
+    Etherbotix::DEV_BOOTLOADER,
+    {'B', 'O', 'O', 'T'});
 
   Etherbotix e;
   e.send(buffer, len);

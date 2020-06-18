@@ -72,17 +72,13 @@ private:
     if (!initialized_)
     {
       // Set baud to 9600, set terminating character to '\n'
-      insert_header(buffer);
-      buffer[4] = 0xff;
-      buffer[5] = 0xff;
-      buffer[6] = ETHERBOTIX_ID;
-      buffer[7] = 5;  // Length of remaining packet
-      buffer[8] = dynamixel::WRITE_DATA;
-      buffer[9] = REG_USART3_BAUD;
-      buffer[10] = 207;
-      buffer[11] = '\n';
-      buffer[12] = dynamixel::compute_checksum(&buffer[4], 9);
-      this->send(buffer, 13);
+      uint8_t len = insert_header(buffer);
+      len += dynamixel::get_write_packet(
+        &buffer[len],
+        Etherbotix::ETHERBOTIX_ID,
+        Etherbotix::REG_USART3_BAUD,
+        {207, '\n'});
+      this->send(buffer, len);
       initialized_ = true;
     }
 

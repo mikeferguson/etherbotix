@@ -127,6 +127,36 @@ inline uint8_t get_sync_read_packet(
 }
 
 /**
+ * @brief Get a WRITE_DATA packet.
+ * @param buffer Buffer to fill with packet.
+ * @param device_id The ID of the servo to read.
+ * @param address Starting address of read.
+ * @param length The number of bytes to read.
+ */
+inline uint8_t get_write_packet(
+  uint8_t* buffer,
+  uint8_t device_id,
+  uint8_t address,
+  std::vector<uint8_t> params)
+{
+  uint8_t len = 0;
+  buffer[len++] = 0xff;
+  buffer[len++] = 0xff;
+  buffer[len++] = device_id;
+  buffer[len++] = 3 + params.size();  // Length of remaining packet
+  buffer[len++] = WRITE_DATA;
+  buffer[len++] = address;
+  for (auto p : params)
+  {
+    buffer[len++] = p;
+  }
+  buffer[len++] = compute_checksum(buffer, 7 + params.size());
+
+  // Return number of bytes added to buffer
+  return len;
+}
+
+/**
  * @brief Create a SYNC_WRITE packet.
  * @param buffer Buffer to fill with packet.
  * @param address Starting address of write.

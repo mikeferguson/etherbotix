@@ -30,6 +30,8 @@
 #ifndef ETHERBOTIX__COPY_FLOAT_HPP_
 #define ETHERBOTIX__COPY_FLOAT_HPP_
 
+#include <vector>
+
 namespace etherbotix
 {
 
@@ -48,6 +50,16 @@ void copy_float(float f, T& t)
   for (std::size_t i = 0; i < 4; ++i)
   {
     t_as_uint8[i] = f_as_uint8[i];
+  }
+}
+
+template<>
+inline void copy_float<std::vector<uint8_t>>(float f, std::vector<uint8_t>& t)
+{
+  uint8_t* f_as_uint8 = reinterpret_cast<uint8_t*>(&f);
+  for (std::size_t i = 0; i < 4; ++i)
+  {
+    t.push_back(f_as_uint8[i]);
   }
 }
 
