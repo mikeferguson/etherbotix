@@ -32,6 +32,7 @@
  *      and http://www.boost.org/doc/libs/1_53_0/doc/html/boost_asio/tutorial/tuttimer3.html
  */
 
+#include <cmath>
 #include <memory>
 #include <string>
 #include <sstream>
@@ -118,6 +119,59 @@ Etherbotix::Etherbotix(const std::string & ip, int port, int millisecond)
 Etherbotix::~Etherbotix()
 {
   shutdown();
+}
+
+bool Etherbotix::set_digital_pin(uint8_t index, uint8_t value, uint8_t direction)
+{
+  if (index > 7)
+  {
+    return false;
+  }
+
+  if (digital_in_ < 0 || digital_out_ < 0 || digital_dir_ < 0)
+  {
+    // We can't update values unless we know the current value
+    return false;
+  }
+
+  uint8_t mask = std::pow(2, index);
+  if (value > 0)
+  {
+    value = mask;
+  }
+
+  if (direction > 0)
+  {
+    direction = mask;
+  }
+  value = (digital_out_ & ~mask) | value;
+  direction = (digital_dir_ & ~mask) | direction;
+
+  // Copy locally in case we make multiple changes before read
+  digital_out_ = value;
+  digital_dir_ = direction;
+
+  uint8_t buffer[64];
+  uint8_t len = dynamixel::get_write_packet(
+    buffer,
+    ETHERBOTIX_ID,
+    REG_DIGITAL_DIR,
+    {direction, value});
+  send(buffer, len);
+
+  return true;
+}
+
+bool Etherbotix::set_tim12_mode(uint8_t mode)
+{
+  uint8_t buffer[64];
+  uint8_t len = dynamixel::get_write_packet(
+    buffer,
+    ETHERBOTIX_ID,
+    REG_TIM12_MODE,
+    {mode});
+  send(buffer, len);
+  return true;
 }
 
 void Etherbotix::send(const uint8_t * buffer, size_t len)

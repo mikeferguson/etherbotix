@@ -153,15 +153,34 @@ public:
   /** @brief Get the baud rate for the Dynamixel bus. -1 if not read. */
   int get_baud_rate() { return baud_rate_; }
 
+  /** @brief Get the value of the digital port. */
   int get_digital_in() { return digital_in_; }
-  int get_digital_out() { return digital_out_; }
+
+  /** @brief Get the value of the of the digital direction register. */
   int get_digital_dir() { return digital_dir_; }
+
+  /** @brief Get the value of the digital out register. */
+  int get_digital_out() { return digital_out_; }
+
+  /**
+   * @brief Set the value and diretion of a digital pin.
+   * @param index The ID of the pin to write (0 to 7).
+   * @param value Anything other than 0 is high.
+   * @param diretion Anything other than 0 is output.
+   * @param returns True if successful, false if unable to send packet.
+   */
+  bool set_digital_pin(uint8_t index, uint8_t value, uint8_t direction = 1);
+
+  /** @brief Returns which pins are used by User IO functions. */
   int get_user_io_use() { return user_io_use_; }
 
-  // TODO(fergs): set digital
-
+  /** @brief Get raw value of analog register (12-bit), -1 if unread. */
   int get_analog0() { return analog0_; }
+
+  /** @brief Get raw value of analog register (12-bit), -1 if unread. */
   int get_analog1() { return analog1_; }
+
+  /** @brief Get raw value of analog register (12-bit), -1 if unread. */
   int get_analog2() { return analog2_; }
 
   /** @brief Get the board system time in milliseconds. */
@@ -206,7 +225,14 @@ public:
   int get_usart3_baud() { return usart3_baud_; }
   int get_usart3_char() { return usart3_char_; }
 
+  /** @brief Get the mode of timer 12. */
   int get_tim12_mode() { return tim12_mode_; }
+
+  /**
+   * @brief Set the mode of timer 12.
+   * @param mode. 0 = not active, 1 = count on rising edge of D5.
+   */
+  bool set_tim12_mode(uint8_t mode);
   int get_tim12_count() { return tim12_count_; }
 
   uint32_t get_packets_recv() { return packets_recv_; }
