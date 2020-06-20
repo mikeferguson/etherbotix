@@ -61,7 +61,7 @@ uint8_t insert_header(uint8_t * buffer)
 
 Etherbotix::Etherbotix(const std::string & ip, int port, int millisecond)
 : socket_(io_service_),
-  update_timer_(io_service_, boost::posix_time::milliseconds(millisecond)),
+  update_timer_(io_service_, boost::posix_time::milliseconds(100)),
   ip_(ip),
   port_(port),
   milliseconds_(millisecond),
@@ -95,7 +95,7 @@ Etherbotix::Etherbotix(const std::string & ip, int port, int millisecond)
   tim9_mode_(-1),
   tim9_count_(0),
   tim12_mode_(-1),
-  tim12_count_(0),
+  tim12_count_(-1),
   spi2_baud_(-1),
   packets_recv_(0),
   packets_bad_(0),
