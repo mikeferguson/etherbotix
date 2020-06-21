@@ -13,7 +13,7 @@ upload the new firmware. Be sure to disable drivers before doing this:
 
 In addition to the ROS tools, the low level _monitor_ is available.
 
-![Monitor](https://raw.githubusercontent.com/mikeferguson/etherbotix_python/master/docs/monitor.png)
+![Monitor](https://raw.githubusercontent.com/mikeferguson/etherbotix_python/ros2/docs/monitor.png)
 
 The digital IO section uses the following notation:
  * A = analog input
