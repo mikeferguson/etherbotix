@@ -77,6 +77,7 @@ public:
   // Interface from etherbotix
   uint8_t getId() { return id_; }
   void updateFromPacket(int position, uint64_t now);
+  void updateFromPacket(int voltage, int temperature, uint64_t now);
   bool hasCommand() { return has_desired_position_; }
   int getDesiredPosition() { return desired_position_; }
 
@@ -94,6 +95,11 @@ public:
   virtual double getVelocityMax();
   virtual double getEffortMax() { return 0.0; }
   virtual void reset() { has_desired_position_ = false; }
+
+  double getVoltage() { return voltage_; }
+  double getTemperature() { return temperature_; }
+  int getNumReads() { return num_reads_; }
+  int getNumErrors() { return num_errors_; }
 
 private:
   double ticksToRads(int ticks);
@@ -121,6 +127,8 @@ private:
   double velocity_;  // rad/s
   double position_;  // radians
   double effort_;    // ?
+  double voltage_;
+  double temperature_;
   uint64_t last_update_;
 
   bool has_desired_position_;

@@ -39,6 +39,7 @@
 
 #include "rclcpp/rclcpp.hpp"
 #include "robot_controllers_interface/controller_manager.h"
+#include "diagnostic_msgs/msg/diagnostic_array.hpp"
 #include "sensor_msgs/msg/imu.hpp"
 #include "sensor_msgs/msg/joint_state.hpp"
 #include "sensor_msgs/msg/magnetic_field.hpp"
@@ -59,6 +60,9 @@ protected:
   /** @brief Publisher update callback. */
   void publish();
 
+  /** @brief Diagnostics publisher callback. */
+  void send_diagnostics();
+
   // Dynamixel Servos
   std::vector<DynamixelServoPtr> servos_;
 
@@ -75,7 +79,9 @@ protected:
   rclcpp::Publisher<sensor_msgs::msg::Imu>::SharedPtr imu_pub_;
   rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr joint_state_pub_;
   rclcpp::Publisher<sensor_msgs::msg::MagneticField>::SharedPtr mag_pub_;
+  rclcpp::Publisher<diagnostic_msgs::msg::DiagnosticArray>::SharedPtr diagnostics_pub_;
   rclcpp::TimerBase::SharedPtr publish_timer_;
+  rclcpp::TimerBase::SharedPtr diagnostics_timer_;
   robot_controllers_interface::ControllerManagerPtr controller_manager_;
   bool initialized_;
 };
