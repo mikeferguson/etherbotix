@@ -19,6 +19,7 @@ endif()
 find_package(PythonLibs REQUIRED)
 find_package(Boost REQUIRED python3 system thread)
 find_package(ament_cmake REQUIRED)
+find_package(diagnostic_msgs REQUIRED)
 find_package(nmea_msgs REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(rclcpp_components REQUIRED)
@@ -41,6 +42,7 @@ add_library(etherbotix SHARED
 )
 target_link_libraries(etherbotix ${Boost_LIBRARIES})
 ament_target_dependencies(etherbotix
+  diagnostic_msgs
   rclcpp
   rclcpp_components
   robot_controllers_interface
@@ -162,6 +164,7 @@ endif()
 ament_export_include_directories(include)
 ament_export_libraries(etherbotix)
 ament_export_dependencies(
+  diagnostic_msgs
   rclcpp
   rclcpp_components
   robot_controllers_interface

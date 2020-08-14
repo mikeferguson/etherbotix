@@ -29,6 +29,7 @@
 
 #include <string>
 #include <stdexcept>
+#include <vector>
 
 #include "etherbotix/copy_float.hpp"
 #include "etherbotix/dynamixel.hpp"

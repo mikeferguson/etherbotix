@@ -30,6 +30,7 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include <sstream>
 
 #include "etherbotix/etherbotix_ros.hpp"
 #include "etherbotix/copy_float.hpp"
@@ -121,8 +122,13 @@ EtherbotixROS::EtherbotixROS(const rclcpp::NodeOptions & options)
 
   // ROS interfaces
   joint_state_pub_ = this->create_publisher<sensor_msgs::msg::JointState>("joint_states", 10);
+  diagnostics_pub_ =
+    this->create_publisher<diagnostic_msgs::msg::DiagnosticArray>("diagnostics", 1);
   publish_timer_ = this->create_wall_timer(std::chrono::milliseconds(20),
                                            std::bind(&EtherbotixROS::publish, this));
+  diagnostics_timer_ = this->create_wall_timer(
+                         std::chrono::milliseconds(1000),
+                         std::bind(&EtherbotixROS::send_diagnostics, this));
   if (use_imu)
   {
     imu_pub_ = this->create_publisher<sensor_msgs::msg::Imu>("imu/raw", 10);
@@ -169,7 +175,7 @@ void EtherbotixROS::update(const boost::system::error_code & e)
 
     uint64_t now = this->now().nanoseconds();
 
-    uint8_t i = 5;
+    uint8_t i = dynamixel::PACKET_PARAM_START;
     for (auto servo : servos_)
     {
       if (i + 1 >= len)
@@ -178,8 +184,16 @@ void EtherbotixROS::update(const boost::system::error_code & e)
         continue;
       }
 
-      int position = buffer[i] + (buffer[i+1] << 8);
-      servo->updateFromPacket(position, now);
+      uint8_t addr = buffer[dynamixel::PACKET_ASYNC_ADDR];
+      if (addr == dynamixel::PRESENT_POSITION_L)
+      {
+        int position = buffer[i] + (buffer[i+1] << 8);
+        servo->updateFromPacket(position, now);
+      }
+      else if (addr == dynamixel::PRESENT_VOLTAGE)
+      {
+        servo->updateFromPacket(buffer[i], buffer[i+1], now);
+      }
       i += 2;
     }
   }
@@ -235,6 +249,13 @@ void EtherbotixROS::update(const boost::system::error_code & e)
       &send_buf[length],
       servo_ids,
       dynamixel::PRESENT_POSITION_L,
+      2);
+
+    // Sync read voltages and temperatures
+    length += dynamixel::get_sync_read_packet(
+      &send_buf[length],
+      servo_ids,
+      dynamixel::PRESENT_VOLTAGE,
       2);
   }
 
@@ -342,6 +363,79 @@ void EtherbotixROS::publish()
 
     mag_pub_->publish(mag_msg);
   }
+}
+
+template <typename T>
+diagnostic_msgs::msg::KeyValue make_key_value(
+  std::string key,
+  T value,
+  std::string postfix = std::string())
+{
+  diagnostic_msgs::msg::KeyValue msg;
+  msg.key = key;
+  std::stringstream ss;
+  ss << value;
+  ss << postfix;
+  msg.value = ss.str();
+  return msg;
+}
+
+void EtherbotixROS::send_diagnostics()
+{
+  diagnostic_msgs::msg::DiagnosticArray msg;
+  msg.header.stamp = this->now();
+
+  // Add diagnostics for servos
+  for (auto servo : servos_)
+  {
+    diagnostic_msgs::msg::DiagnosticStatus status;
+
+    status.name = servo->getName();
+    if (servo->getTemperature() > 60)
+    {
+      status.message = "OVERHEATED, SHUTDOWN";
+      status.level = status.ERROR;
+    }
+    else if (servo->getTemperature() > 50)
+    {
+      status.message = "OVERHEATING";
+      status.level = status.WARN;
+    }
+    else
+    {
+      status.message = "OK";
+      status.level = status.OK;
+    }
+
+    status.values.push_back(make_key_value("Position", servo->getPosition()));
+    status.values.push_back(make_key_value("Temperature", servo->getTemperature()));
+    status.values.push_back(make_key_value("Voltage", servo->getVoltage()));
+    status.values.push_back(make_key_value("Reads", servo->getNumReads()));
+    double error_rate = servo->getNumErrors() / (servo->getNumErrors() + servo->getNumReads());
+    status.values.push_back(make_key_value("Error Rate", error_rate));
+
+    msg.status.push_back(status);
+  }
+
+  // Add diagnostics for Etherbotix
+  diagnostic_msgs::msg::DiagnosticStatus status;
+  status.name = "etherbotix";
+  status.level = status.OK;
+  status.message = "OK";
+  status.hardware_id = this->get_unique_id();
+  if (this->get_system_voltage() < 10.0)
+  {
+    status.level = status.ERROR;
+    status.message = "Battery depleted!";
+  }
+  status.values.push_back(make_key_value("Voltage", this->get_system_voltage(), "V"));
+  status.values.push_back(make_key_value("Servo Current", this->get_servo_current(), "A"));
+  status.values.push_back(make_key_value("Aux. Current", this->get_aux_current(), "A"));
+  status.values.push_back(make_key_value("Packets", this->get_packets_recv()));
+  status.values.push_back(make_key_value("Packets Bad", this->get_packets_bad()));
+  msg.status.push_back(status);
+
+  diagnostics_pub_->publish(msg);
 }
 
 }  // namespace etherbotix

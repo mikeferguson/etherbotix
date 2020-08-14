@@ -46,16 +46,24 @@ constexpr uint8_t PACKET_HEADER = 0;
 constexpr uint8_t PACKET_HEADER_2 = 1;
 constexpr uint8_t PACKET_ID = 2;
 constexpr uint8_t PACKET_LEN = 3;
+// Packets sent to dynamixels use this byte for instruction
 constexpr uint8_t PACKET_INSTR = 4;
+// Response packets use this byte as ERROR indicator
+constexpr uint8_t PACKET_ERROR = 4;
+// Response packets from async reads (id = broadcast) use this byte as address
+constexpr uint8_t PACKET_ASYNC_ADDR = 4;
+constexpr uint8_t PACKET_PARAM_START = 5;
 
 constexpr double AX_SERVO_MAX_VEL = 11.93;  // 114 rpm
 constexpr double AX_SERVO_RANGE = 5.23599;
 constexpr double MX_SERVO_RANGE = 6.28319;
 
-constexpr double GOAL_POSITION_L = 30;
-constexpr double GOAL_POSITION_H = 31;
-constexpr double PRESENT_POSITION_L = 36;
-constexpr double PRESENT_POSITION_H = 37;
+constexpr int GOAL_POSITION_L = 30;
+constexpr int GOAL_POSITION_H = 31;
+constexpr int PRESENT_POSITION_L = 36;
+constexpr int PRESENT_POSITION_H = 37;
+constexpr int PRESENT_VOLTAGE = 42;
+constexpr int PRESENT_TEMPERATURE = 43;
 
 inline uint8_t compute_checksum(
   uint8_t* buffer,
