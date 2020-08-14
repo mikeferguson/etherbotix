@@ -77,7 +77,7 @@ public:
   // Interface from etherbotix
   uint8_t getId() { return id_; }
   void updateFromPacket(int position, uint64_t now);
-  void updateFromPacket(int voltage, int temperature, uint64_t now);
+  void updateFromPacket(uint8_t voltage, uint8_t temperature, uint64_t now);
   bool hasCommand() { return has_desired_position_; }
   int getDesiredPosition() { return desired_position_; }
 

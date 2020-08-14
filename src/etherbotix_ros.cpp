@@ -185,14 +185,14 @@ void EtherbotixROS::update(const boost::system::error_code & e)
       }
 
       uint8_t addr = buffer[dynamixel::PACKET_ASYNC_ADDR];
-      if (addr == dynamixel::PRESENT_VOLTAGE)
-      {
-        servo->updateFromPacket(buffer[i], buffer[i+1], now);
-      }
-      else if (addr == dynamixel::PRESENT_POSITION_L)
+      if (addr == dynamixel::PRESENT_POSITION_L)
       {
         int position = buffer[i] + (buffer[i+1] << 8);
         servo->updateFromPacket(position, now);
+      }
+      else if (addr == dynamixel::PRESENT_VOLTAGE)
+      {
+        servo->updateFromPacket(buffer[i], buffer[i+1], now);
       }
       i += 2;
     }

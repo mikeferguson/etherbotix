@@ -50,6 +50,9 @@ DynamixelServo::DynamixelServo(const std::string & name, uint8_t id, bool invert
   lower_lim_(-dynamixel::AX_SERVO_RANGE / 2.0),
   upper_lim_(dynamixel::AX_SERVO_RANGE / 2.0),
   velocity_lim_(dynamixel::AX_SERVO_MAX_VEL),
+  num_reads_(0),
+  num_writes_(0),
+  num_errors_(0),
   velocity_(0.0),
   position_(0.0),
   effort_(0.0),
@@ -104,11 +107,11 @@ void DynamixelServo::updateFromPacket(int position, uint64_t now)
   }
 }
 
-void DynamixelServo::updateFromPacket(int voltage, int temperature, uint64_t now)
+void DynamixelServo::updateFromPacket(uint8_t voltage, uint8_t temperature, uint64_t now)
 {
   if (voltage < 255)
   {
-    voltage_ = voltage_ / 10.0;
+    voltage_ = voltage / 10.0;
     last_update_ = now;
   }
   if (temperature < 100)
