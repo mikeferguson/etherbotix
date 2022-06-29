@@ -199,8 +199,8 @@ void EtherbotixROS::update(const boost::system::error_code & e)
   }
 
   // Update controllers
-  uint64_t nanoseconds = milliseconds_ * 1e6;
-  controller_manager_->update(this->now(), rclcpp::Duration(nanoseconds));
+  double seconds = milliseconds_ / 1e3;
+  controller_manager_->update(this->now(), rclcpp::Duration::from_seconds(seconds));
 
   // Generate Commands
   size_t length = 0;
