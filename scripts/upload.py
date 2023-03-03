@@ -40,11 +40,16 @@ if len(sys.argv) < 2:
 # Load File
 firmware = open(sys.argv[1], "rb").read()
 
+# Pad firmware to 4-byte aligned
+while len(firmware) % 4 != 0:
+    firmware += chr(0)
+
 # Compute length (in words)
 length = len(firmware)/4
 
 # Compute crc32
-crc32 = binascii.crc32(firmware)
+crc32 = binascii.crc32(firmware) & 0xffffffff
+print("CRC32", hex(crc32))
 
 # Insert metadata
 metadata = [0 for i in range(512)]
