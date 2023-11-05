@@ -89,6 +89,24 @@ rclcpp_components_register_node(gps_publisher
   EXECUTABLE gps_publisher_node
 )
 
+add_library(ld06_publisher SHARED
+  src/ld06_publisher.cpp
+)
+target_link_libraries(ld06_publisher
+  etherbotix
+  ${Boost_LIBRARIES}
+)
+ament_target_dependencies(ld06_publisher
+  rclcpp
+  rclcpp_components
+  robot_controllers_interface
+  sensor_msgs
+)
+rclcpp_components_register_node(ld06_publisher
+  PLUGIN "etherbotix::LD06Publisher"
+  EXECUTABLE ld06_publisher_node
+)
+
 add_executable(read_etherbotix src/read_etherbotix.cpp)
 target_link_libraries(read_etherbotix
   etherbotix
