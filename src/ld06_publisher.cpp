@@ -32,7 +32,7 @@
 
 #include "etherbotix/etherbotix.hpp"
 #include "etherbotix/dynamixel.hpp"
-#include "sensor_msgs/msg/laserscan.hpp"
+#include "sensor_msgs/msg/laser_scan.hpp"
 #include "rclcpp/rclcpp.hpp"
 
 namespace etherbotix
@@ -73,7 +73,7 @@ public:
     port_ = this->declare_parameter<int>("port", port_);
     RCLCPP_INFO(logger_, "Connecting to Etherbotix at %s:%d", ip_.c_str(), port_);
 
-    scan_.frame_id = this->declare_parameter<std::string>("frame_id", "ld06_frame");
+    scan_.header.frame_id = this->declare_parameter<std::string>("frame_id", "ld06_frame");
     scan_.range_min = 0.02;
     scan_.range_max = 12.0;
 
@@ -114,7 +114,7 @@ private:
       }
       else
       {
-        ld06_packet_t * packet = reinterpret_cast<ld06_packet_t>(&buffer[5]);
+        ld06_packet_t * packet = reinterpret_cast<ld06_packet_t*>(&buffer[5]);
 
         // Verify packet
         if (packet->start_byte != 0x54)
@@ -153,7 +153,7 @@ private:
         // Add data to scan message
         for (size_t i = 0; i < 12; ++i)
         {
-          double angle = start_angle + (angle_increment * i)
+          double angle = start_angle + (angle_increment * i);
           // Avoid wrapping around
           if (angle > 2 * M_PI)
           {
@@ -169,7 +169,7 @@ private:
         if (scan_.angle_max > 2 * M_PI - 0.1)
         {
           // Have enough points - publish scan
-          scan_.angle.angle_increment = (scan_.angle_max - scan_.angle_min) / (scan_.ranges.size() - 1);
+          scan_.angle_increment = (scan_.angle_max - scan_.angle_min) / (scan_.ranges.size() - 1);
           pub_->publish(scan_);
 
           // Clean up scan for next go around
