@@ -27,8 +27,8 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <string>
 #include <math.h>
+#include <string>
 
 #include "angles/angles.h"
 #include "etherbotix/etherbotix.hpp"
@@ -88,7 +88,8 @@ public:
 private:
   void publish()
   {
-    RCLCPP_INFO(logger_, "Publish scan %f %f %lu", scan_.angle_min, scan_.angle_max, scan_.ranges.size());
+    RCLCPP_INFO(logger_, "Publish scan %f %f %lu",
+                scan_.angle_min, scan_.angle_max, scan_.ranges.size());
 
     // Only publish if appropriately sized scan
     if (scan_.ranges.size() > 100)
@@ -154,7 +155,8 @@ private:
         double time_per_point = 1 / 4500.0;
         double start_angle = angles::from_degrees(packet->start_angle * 0.01);
         double end_angle = angles::from_degrees(packet->end_angle * 0.01);
-        double angle_increment = angles::shortest_angular_distance(start_angle, end_angle) / (BEAMS_PER_PACKET - 1);
+        double angle_increment = angles::shortest_angular_distance(start_angle, end_angle) /
+                                 (BEAMS_PER_PACKET - 1);
 
         // Add data to scan message
         for (size_t i = 0; i < BEAMS_PER_PACKET; ++i)
@@ -178,7 +180,8 @@ private:
           // Setup scan message header
           if (scan_.ranges.empty())
           {
-            scan_.header.stamp = now - rclcpp::Duration::from_seconds((BEAMS_PER_PACKET - i) * time_per_point);
+            double offset = (BEAMS_PER_PACKET - i) * time_per_point;
+            scan_.header.stamp = now - rclcpp::Duration::from_seconds(offset);
             scan_.angle_min = angle;
            }
 
