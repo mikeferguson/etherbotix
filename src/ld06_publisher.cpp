@@ -30,6 +30,7 @@
 #include <string>
 #include <math.h>
 
+#include "angles/angles.h"
 #include "etherbotix/etherbotix.hpp"
 #include "etherbotix/dynamixel.hpp"
 #include "sensor_msgs/msg/laser_scan.hpp"
@@ -61,6 +62,8 @@ typedef struct __attribute__((packed))
 
 class LD06Publisher : public rclcpp::Node, public Etherbotix
 {
+  static constexpr int BEAMS_PER_PACKET = 12;
+
 public:
   explicit LD06Publisher(const rclcpp::NodeOptions & options)
   : rclcpp::Node("ld06_publisher", options),
@@ -72,6 +75,7 @@ public:
     ip_ = this->declare_parameter<std::string>("ip_address", ip_);
     port_ = this->declare_parameter<int>("port", port_);
     RCLCPP_INFO(logger_, "Connecting to Etherbotix at %s:%d", ip_.c_str(), port_);
+    milliseconds_ = 10;
 
     scan_.header.frame_id = this->declare_parameter<std::string>("frame_id", "ld06_frame");
     scan_.range_min = 0.02;
@@ -82,6 +86,27 @@ public:
   }
 
 private:
+  void publish()
+  {
+    RCLCPP_INFO(logger_, "Publish scan %f %f %lu", scan_.angle_min, scan_.angle_max, scan_.ranges.size());
+
+    // Only publish if appropriately sized scan
+    if (scan_.ranges.size() > 100)
+    {
+      // Finalize angle increment
+      scan_.angle_increment = (scan_.angle_max - scan_.angle_min) / (scan_.ranges.size() - 1);
+
+      // Publish the scan
+      pub_->publish(scan_);
+    }
+
+    // Clean up scan for next go around
+    scan_.ranges.clear();
+    scan_.intensities.clear();
+    scan_.angle_min = 0.0;
+    scan_.angle_max = 0.0;
+  }
+
   void update(const boost::system::error_code & e)
   {
     // Abort if we are shutting down
@@ -89,6 +114,9 @@ private:
     {
       return;
     }
+
+    // Grab current timestamp
+    rclcpp::Time now = this->now();
 
     uint8_t buffer[256];
 
@@ -106,77 +134,64 @@ private:
     }
 
     uint8_t len = get(buffer);
-    if (len > 0)
+    while (len > 0)
     {
-      if (buffer[dynamixel::PACKET_ID] != ETHERBOTIX_ID)
+      ld06_packet_t * packet = reinterpret_cast<ld06_packet_t*>(&buffer);
+
+      // Verify packet
+      if (packet->start_byte != 0x54)
       {
-        RCLCPP_WARN(logger_, "Got packet for ID: %d", buffer[dynamixel::PACKET_ID]);
+        scan_.ranges.clear();
+        scan_.intensities.clear();
+      }
+      else if ((packet->length & 0x1f) != BEAMS_PER_PACKET)
+      {
+        scan_.ranges.clear();
+        scan_.intensities.clear();
       }
       else
       {
-        ld06_packet_t * packet = reinterpret_cast<ld06_packet_t*>(&buffer[5]);
-
-        // Verify packet
-        if (packet->start_byte != 0x54)
-        {
-          RCLCPP_WARN(logger_, "Invalid start byte: %d", packet->start_byte);
-          scan_.ranges.clear();
-          scan_.intensities.clear();
-          return;
-        }
-        else if ((packet->length & 0x1f) != 12)
-        {
-          RCLCPP_WARN(logger_, "Invalid length: %d", packet->length);
-          scan_.ranges.clear();
-          scan_.intensities.clear();
-          return;
-        }
-
         double time_per_point = 1 / 4500.0;
-        double start_angle = packet->start_angle * 0.01 * M_PI / 180;
-        double end_angle = packet->end_angle * 0.01 * M_PI/ 180;
-        double angle_increment = (end_angle - start_angle) / 11;
-
-        if (scan_.ranges.empty())
-        {
-          // Make sure this is the first part of the scan
-          if (start_angle > 0.1)
-          {
-            return;
-          }
-
-          // Setup scan message
-          scan_.header.stamp = this->now() - rclcpp::Duration::from_seconds(12 * time_per_point);
-          scan_.angle_min = start_angle;
-        }
+        double start_angle = angles::from_degrees(packet->start_angle * 0.01);
+        double end_angle = angles::from_degrees(packet->end_angle * 0.01);
+        double angle_increment = angles::shortest_angular_distance(start_angle, end_angle) / (BEAMS_PER_PACKET - 1);
 
         // Add data to scan message
-        for (size_t i = 0; i < 12; ++i)
+        for (size_t i = 0; i < BEAMS_PER_PACKET; ++i)
         {
+          // Compute heading of laser beam
           double angle = start_angle + (angle_increment * i);
-          // Avoid wrapping around
-          if (angle > 2 * M_PI)
+
+          // Publish when we wrap around from 2pi to 0
+          if (angle >= 2 * M_PI || angle < (scan_.angle_max - 0.05))
           {
-            break;
+            // Publish the completed scan
+            publish();
+
+            if (angle >= 2 * M_PI)
+            {
+              start_angle -= 2 * M_PI;
+              angle = start_angle + (angle_increment * i);
+            }
           }
+
+          // Setup scan message header
+          if (scan_.ranges.empty())
+          {
+            scan_.header.stamp = now - rclcpp::Duration::from_seconds((BEAMS_PER_PACKET - i) * time_per_point);
+            scan_.angle_min = angle;
+           }
+
+          // Add the beam
           scan_.angle_max = angle;
           // Convert ranges from millimeters to meters
           scan_.ranges.push_back(packet->data[i].range * 0.001);
           // Publish raw intensity
           scan_.intensities.push_back(packet->data[i].confidence);
         }
-
-        if (scan_.angle_max > 2 * M_PI - 0.1)
-        {
-          // Have enough points - publish scan
-          scan_.angle_increment = (scan_.angle_max - scan_.angle_min) / (scan_.ranges.size() - 1);
-          pub_->publish(scan_);
-
-          // Clean up scan for next go around
-          scan_.ranges.clear();
-          scan_.intensities.clear();
-        }
       }
+
+      len = get(buffer);
     }
 
     // Reset timer and async wait

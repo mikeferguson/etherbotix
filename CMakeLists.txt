@@ -19,6 +19,7 @@ endif()
 find_package(PythonLibs REQUIRED)
 find_package(Boost REQUIRED python system thread)
 find_package(ament_cmake REQUIRED)
+find_package(angles REQUIRED)
 find_package(diagnostic_msgs REQUIRED)
 find_package(nmea_msgs REQUIRED)
 find_package(rclcpp REQUIRED)
@@ -97,6 +98,7 @@ target_link_libraries(ld06_publisher
   ${Boost_LIBRARIES}
 )
 ament_target_dependencies(ld06_publisher
+  angles
   rclcpp
   rclcpp_components
   robot_controllers_interface
@@ -152,6 +154,7 @@ install(
   TARGETS
     etherbotix
     gps_publisher
+    ld06_publisher
     read_etherbotix
     read_unique_id
     reboot

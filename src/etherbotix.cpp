@@ -267,8 +267,16 @@ void Etherbotix::handle_receive(
     {
       size_t start = idx;
 
-      if (recv_buffer_[idx++] != 0xff ||
-          recv_buffer_[idx++] != 0xff)
+      if (recv_buffer_[idx] == 0x54)
+      {
+        // LD-06 raw packet
+        std::lock_guard<std::mutex> lock(packets_mutex_);
+        uint8_t len = bytes_transferred - 4;
+        packets_.emplace(Packet(len, &recv_buffer_[start]));
+        break;
+      }
+      else if (recv_buffer_[idx++] != 0xff ||
+               recv_buffer_[idx++] != 0xff)
       {
         // Invalid packet header
         break;
