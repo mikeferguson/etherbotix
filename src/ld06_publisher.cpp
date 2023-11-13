@@ -63,6 +63,14 @@ typedef struct __attribute__((packed))
 class LD06Publisher : public rclcpp::Node, public Etherbotix
 {
   static constexpr int BEAMS_PER_PACKET = 12;
+  static constexpr int BEAMS_PER_SCAN = 450;
+
+  struct BeamData
+  {
+    float angle;
+    float range;
+    uint8_t intensity;
+  };
 
 public:
   explicit LD06Publisher(const rclcpp::NodeOptions & options)
@@ -77,35 +85,24 @@ public:
     RCLCPP_INFO(logger_, "Connecting to Etherbotix at %s:%d", ip_.c_str(), port_);
     milliseconds_ = 10;
 
+    // Setup laser scan message
     scan_.header.frame_id = this->declare_parameter<std::string>("frame_id", "ld06_frame");
-    scan_.range_min = 0.02;
-    scan_.range_max = 12.0;
+    resetScanMsg();
 
     // ROS2 interfaces
     pub_ = this->create_publisher<sensor_msgs::msg::LaserScan>("scan", 10);
   }
 
 private:
-  void publish()
+  void resetScanMsg()
   {
-    RCLCPP_INFO(logger_, "Publish scan %f %f %lu",
-                scan_.angle_min, scan_.angle_max, scan_.ranges.size());
-
-    // Only publish if appropriately sized scan
-    if (scan_.ranges.size() > 100)
-    {
-      // Finalize angle increment
-      scan_.angle_increment = (scan_.angle_max - scan_.angle_min) / (scan_.ranges.size() - 1);
-
-      // Publish the scan
-      pub_->publish(scan_);
-    }
-
-    // Clean up scan for next go around
-    scan_.ranges.clear();
-    scan_.intensities.clear();
     scan_.angle_min = 0.0;
-    scan_.angle_max = 0.0;
+    scan_.angle_max = 2 * M_PI;
+    scan_.angle_increment = angles::from_degrees(360.0 / BEAMS_PER_SCAN);
+    scan_.range_min = 0.005;
+    scan_.range_max = 15.0;
+    scan_.ranges.assign(BEAMS_PER_SCAN, std::numeric_limits<float>::quiet_NaN());
+    scan_.intensities.assign(BEAMS_PER_SCAN, std::numeric_limits<float>::infinity());
   }
 
   void update(const boost::system::error_code & e)
@@ -140,35 +137,54 @@ private:
       ld06_packet_t * packet = reinterpret_cast<ld06_packet_t*>(&buffer);
 
       // Verify packet
-      if (packet->start_byte != 0x54)
+      if (packet->start_byte == 0x54 &&
+          (packet->length & 0x1f) == BEAMS_PER_PACKET)
       {
-        scan_.ranges.clear();
-        scan_.intensities.clear();
-      }
-      else if ((packet->length & 0x1f) != BEAMS_PER_PACKET)
-      {
-        scan_.ranges.clear();
-        scan_.intensities.clear();
-      }
-      else
-      {
-        double time_per_point = 1 / 4500.0;
         double start_angle = angles::from_degrees(packet->start_angle * 0.01);
         double end_angle = angles::from_degrees(packet->end_angle * 0.01);
         double angle_increment = angles::shortest_angular_distance(start_angle, end_angle) /
                                  (BEAMS_PER_PACKET - 1);
 
-        // Add data to scan message
+        // Add data to beam vector
         for (size_t i = 0; i < BEAMS_PER_PACKET; ++i)
         {
           // Compute heading of laser beam
           double angle = start_angle + (angle_increment * i);
 
           // Publish when we wrap around from 2pi to 0
-          if (angle >= 2 * M_PI || angle < (scan_.angle_max - 0.05))
+          if (angle >= 2 * M_PI || angle < 0.05)
           {
             // Publish the completed scan
-            publish();
+            if (beams_.size() > 400)
+            {
+              RCLCPP_INFO(logger_, "Publish %lu beams", beams_.size());
+
+              // Copy beams into scan
+              for (auto beam : beams_)
+              {
+                // Data is mirrored in device
+                size_t index = (scan_.angle_max - beam.angle) / scan_.angle_increment;
+                if (index < scan_.ranges.size())
+                {
+                  if (beam.range < scan_.range_min)
+                  {
+                    scan_.ranges[index] = std::numeric_limits<float>::quiet_NaN();
+                  }
+                  else
+                  {
+                    scan_.ranges[index] = beam.range;
+                  }
+                  scan_.intensities[index] = beam.intensity;
+                }
+              }
+              beams_.clear();
+
+              // Publish the scan
+              pub_->publish(scan_);
+
+              // Clean up scan for next go around
+              resetScanMsg();
+            }
 
             if (angle >= 2 * M_PI)
             {
@@ -178,19 +194,19 @@ private:
           }
 
           // Setup scan message header
-          if (scan_.ranges.empty())
+          if (beams_.empty())
           {
+            double time_per_point = 1 / 4500.0;
             double offset = (BEAMS_PER_PACKET - i) * time_per_point;
             scan_.header.stamp = now - rclcpp::Duration::from_seconds(offset);
-            scan_.angle_min = angle;
-           }
+          }
 
           // Add the beam
-          scan_.angle_max = angle;
-          // Convert ranges from millimeters to meters
-          scan_.ranges.push_back(packet->data[i].range * 0.001);
-          // Publish raw intensity
-          scan_.intensities.push_back(packet->data[i].confidence);
+          BeamData beam;
+          beam.angle = angle;
+          beam.range = packet->data[i].range * 0.001;
+          beam.intensity = packet->data[i].confidence;
+          beams_.push_back(beam);
         }
       }
 
@@ -206,9 +222,7 @@ private:
   rclcpp::Logger logger_;
   rclcpp::Publisher<sensor_msgs::msg::LaserScan>::SharedPtr pub_;
   sensor_msgs::msg::LaserScan scan_;
-
-  // Book keeping for scan accumulation
-  int packets_in_scan_;
+  std::vector<BeamData> beams_;
 };
 
 }  // namespace etherbotix
