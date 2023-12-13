@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 Michael E. Ferguson
+ * Copyright 2020-2023 Michael E. Ferguson
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -169,6 +169,7 @@ BOOST_PYTHON_MODULE(etherbotix_py)
     .def("get_packets_recv", &EtherbotixWrapper::get_packets_recv)
     .def("get_packets_bad", &EtherbotixWrapper::get_packets_bad)
     .def("get_unique_id", &EtherbotixWrapper::get_unique_id)
+    .def("set_digital_pin", &EtherbotixWrapper::set_digital_pin)
     .def("read", &EtherbotixWrapper::read)
     .def("write", &EtherbotixWrapper::write)
     .def("update", &EtherbotixWrapper::update);
