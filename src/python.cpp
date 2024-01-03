@@ -104,27 +104,6 @@ public:
     this->send(buffer, len);
     return packets_sent;
   }
-
-  // NOTE: since ticks_per_radian is 1, these return raw ticks
-  int get_motor1_vel()
-  {
-    return this->getMotor1()->getVelocity();
-  }
-
-  int get_motor1_pos()
-  {
-    return this->getMotor1()->getPosition();
-  }
-
-  int get_motor2_vel()
-  {
-    return this->getMotor2()->getVelocity();
-  }
-
-  int get_motor2_pos()
-  {
-    return this->getMotor2()->getPosition();
-  }
 };
 
 BOOST_PYTHON_MODULE(etherbotix_py)
@@ -147,10 +126,8 @@ BOOST_PYTHON_MODULE(etherbotix_py)
     .def("get_system_voltage", &EtherbotixWrapper::get_system_voltage)
     .def("get_motor_period", &EtherbotixWrapper::get_motor_period)
     .def("get_motor_max_step", &EtherbotixWrapper::get_motor_max_step)
-    .def("get_motor1_pos", &EtherbotixWrapper::get_motor1_pos)
-    .def("get_motor1_vel", &EtherbotixWrapper::get_motor1_vel)
-    .def("get_motor2_pos", &EtherbotixWrapper::get_motor2_pos)
-    .def("get_motor2_vel", &EtherbotixWrapper::get_motor2_vel)
+    .def("get_motor1", &EtherbotixWrapper::getMotor1)
+    .def("get_motor2", &EtherbotixWrapper::getMotor2)
     .def("get_imu_version", &EtherbotixWrapper::get_imu_version)
     .def("get_imu_flags", &EtherbotixWrapper::get_imu_flags)
     .def("get_imu_acc_x", &EtherbotixWrapper::get_imu_acc_x)
@@ -173,6 +150,16 @@ BOOST_PYTHON_MODULE(etherbotix_py)
     .def("read", &EtherbotixWrapper::read)
     .def("write", &EtherbotixWrapper::write)
     .def("update", &EtherbotixWrapper::update);
+
+  boost::python::class_<etherbotix::EtherbotixMotor, boost::noncopyable>(
+       "EtherbotixMotor",
+       boost::python::init<const std::string&, double>())
+    .def("get_name", &etherbotix::EtherbotixMotor::getName)
+    .def("get_position", &etherbotix::EtherbotixMotor::getPosition)
+    .def("get_velocity", &etherbotix::EtherbotixMotor::getVelocity)
+    .def("get_effort", &etherbotix::EtherbotixMotor::getEffort);
+
+  boost::python::register_ptr_to_python<std::shared_ptr<etherbotix::EtherbotixMotor>>();
 
     // TODO(fergs): figure out how to wrap the constexpr
     // .def_readonly("DEV_M1_TRACE", &EtherbotixWrapper::DEV_M1_TRACE)

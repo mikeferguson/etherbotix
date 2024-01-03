@@ -111,11 +111,11 @@ if __name__ == "__main__":
 
                 # Motors & IMU in second column
                 screen.addstr(1, 40, "Motor 1")
-                screen.addstr(2, 40, "Position:      %15d" % e.get_motor1_pos(), curses.color_pair(WHITE_OK))
-                screen.addstr(3, 40, "Velocity:      %15d" % e.get_motor1_vel(), curses.color_pair(WHITE_OK))
+                screen.addstr(2, 40, "Position:      %15d" % e.get_motor1().get_position(), curses.color_pair(WHITE_OK))
+                screen.addstr(3, 40, "Velocity:      %15d" % e.get_motor1().get_velocity(), curses.color_pair(WHITE_OK))
                 screen.addstr(5, 40, "Motor 2")
-                screen.addstr(6, 40, "Position:      %15d" % e.get_motor2_pos(), curses.color_pair(WHITE_OK))
-                screen.addstr(7, 40, "Velocity:      %15d" % e.get_motor2_vel(), curses.color_pair(WHITE_OK))
+                screen.addstr(6, 40, "Position:      %15d" % e.get_motor2().get_position(), curses.color_pair(WHITE_OK))
+                screen.addstr(7, 40, "Velocity:      %15d" % e.get_motor2().get_velocity(), curses.color_pair(WHITE_OK))
                 screen.addstr(9, 40, "IMU (v%d)  " % e.get_imu_version())
                 if (e.get_imu_flags() & 0xE0) != 0xE0:
                     screen.addstr(9, 65, "ERROR", curses.color_pair(DEFAULT_ERROR))
