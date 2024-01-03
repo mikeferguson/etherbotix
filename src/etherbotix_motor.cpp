@@ -110,8 +110,8 @@ void EtherbotixMotor::update_from_packet(int16_t velocity, int32_t position, int
   // Convert to radians
   position_ = (position - ticks_offset_) / ticks_per_radian_;
 
-  // TODO(fergs): Convert to amperes
-  current_ = current;
+  // Convert from mA to Amperes
+  current_ = current / 1000.0;
 }
 
 void EtherbotixMotor::update_motor_period_from_packet(uint8_t period)
