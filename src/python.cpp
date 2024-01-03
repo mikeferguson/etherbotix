@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2023 Michael E. Ferguson
+ * Copyright 2020-2024 Michael E. Ferguson
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -108,22 +108,22 @@ public:
   // NOTE: since ticks_per_radian is 1, these return raw ticks
   int get_motor1_vel()
   {
-    return this->getLeftMotor()->getVelocity();
+    return this->getMotor1()->getVelocity();
   }
 
   int get_motor1_pos()
   {
-    return this->getLeftMotor()->getPosition();
+    return this->getMotor1()->getPosition();
   }
 
   int get_motor2_vel()
   {
-    return this->getRightMotor()->getVelocity();
+    return this->getMotor2()->getVelocity();
   }
 
   int get_motor2_pos()
   {
-    return this->getRightMotor()->getPosition();
+    return this->getMotor2()->getPosition();
   }
 };
 

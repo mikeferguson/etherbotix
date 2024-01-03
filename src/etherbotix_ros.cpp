@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 Michael E. Ferguson
+ * Copyright 2013-2024 Michael E. Ferguson
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -64,32 +64,15 @@ EtherbotixROS::EtherbotixROS(const rclcpp::NodeOptions & options)
   mag_scale_ = this->declare_parameter<double>("imu.mag.scale", 0.0);
 
   // Setup motors
-  std::string l_motor_name = this->declare_parameter<std::string>("l_motor_name",
-                                                                  "l_wheel_joint");
-  std::string r_motor_name = this->declare_parameter<std::string>("r_motor_name",
-                                                                  "r_wheel_joint");
-  double ticks_per_radian = this->declare_parameter<double>("ticks_per_radian", 1.0);
-  left_motor_ = std::make_shared<EtherbotixMotor>(l_motor_name, ticks_per_radian);
-  right_motor_ = std::make_shared<EtherbotixMotor>(r_motor_name, ticks_per_radian);
-  int left_offset = this->declare_parameter<int>("ticks_offset_l", 0);
-  int right_offset = this->declare_parameter<int>("ticks_offset_r", 0);
-  left_motor_->set_ticks_offset(left_offset);
-  right_motor_->set_ticks_offset(right_offset);
-
-  double kp = this->declare_parameter<double>("motor_kp", 1.0);
-  double kd = this->declare_parameter<double>("motor_kd", 0.0);
-  double ki = this->declare_parameter<double>("motor_ki", 0.1);
-  double kw = this->declare_parameter<double>("motor_kw", 400.0);
-  RCLCPP_INFO(logger_, "Setting gains to %f %f %f %f", kp, kd, ki, kw);
-  left_motor_->set_gains(kp, kd, ki, kw);
-  right_motor_->set_gains(kp, kd, ki, kw);
+  setup_motor("motor1", "l_wheel_joint", m1_);
+  setup_motor("motor2", "r_wheel_joint", m2_);
 
   // Controller manager
   controller_manager_ = std::make_shared<robot_controllers_interface::ControllerManager>();
   robot_controllers_interface::JointHandlePtr j;
-  j = std::static_pointer_cast<robot_controllers_interface::JointHandle>(left_motor_);
+  j = std::static_pointer_cast<robot_controllers_interface::JointHandle>(m1_);
   controller_manager_->addJointHandle(j);
-  j = std::static_pointer_cast<robot_controllers_interface::JointHandle>(right_motor_);
+  j = std::static_pointer_cast<robot_controllers_interface::JointHandle>(m2_);
   controller_manager_->addJointHandle(j);
 
   // Dynamixel joints
@@ -142,6 +125,28 @@ EtherbotixROS::EtherbotixROS(const rclcpp::NodeOptions & options)
 
 EtherbotixROS::~EtherbotixROS()
 {
+}
+
+void EtherbotixROS::setup_motor(const std::string & name,
+                                const std::string & default_joint_name,
+                                EtherbotixMotorPtr & motor)
+{
+  std::string joint_name =
+    this->declare_parameter<std::string>(name + ".joint_name", default_joint_name);
+  double ticks_per_radian =
+    this->declare_parameter<double>(name + ".ticks_per_radian", 1.0);
+
+  motor = std::make_shared<EtherbotixMotor>(joint_name, ticks_per_radian);
+
+  int offset = this->declare_parameter<int>(name + ".ticks_offset", 0);
+  motor->set_ticks_offset(offset);
+
+  double kp = this->declare_parameter<double>(name + ".kp", 1.0);
+  double kd = this->declare_parameter<double>(name + ".kd", 0.0);
+  double ki = this->declare_parameter<double>(name + ".ki", 0.1);
+  double kw = this->declare_parameter<double>(name + ".kw", 400.0);
+  RCLCPP_INFO(logger_, "Setting %s gains to %f %f %f %f", name.c_str(), kp, kd, ki, kw);
+  motor->set_gains(kp, kd, ki, kw);
 }
 
 void EtherbotixROS::update(const boost::system::error_code & e)
@@ -219,8 +224,8 @@ void EtherbotixROS::update(const boost::system::error_code & e)
   length += dynamixel::get_read_packet(&send_buf[length], ETHERBOTIX_ID, 0, 128);
 
   // Get motor update packets
-  length += right_motor_->get_packets(&send_buf[length], 2);
-  length += left_motor_->get_packets(&send_buf[length], 1);
+  length += m1_->get_packets(&send_buf[length], 1);
+  length += m2_->get_packets(&send_buf[length], 2);
 
   // Get servo update packets
   if (!servos_.empty())

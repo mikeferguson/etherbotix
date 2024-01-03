@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 Michael E. Ferguson
+ * Copyright 2013-2024 Michael E. Ferguson
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -54,6 +54,11 @@ public:
   virtual ~EtherbotixROS();
 
 protected:
+  /** @brief Setup a motor from ROS params. */
+  void setup_motor(const std::string & name,
+                   const std::string & default_joint_name,
+                   EtherbotixMotorPtr & motor);
+
   /** @brief Gets called at a periodic rate, updates everything. */
   virtual void update(const boost::system::error_code & /*e*/);
 

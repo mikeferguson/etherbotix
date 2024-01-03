@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 Michael E. Ferguson
+ * Copyright 2013-2024 Michael E. Ferguson
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -102,8 +102,8 @@ Etherbotix::Etherbotix(const std::string & ip, int port, int millisecond)
   unique_id_("")
 {
   // Setup motors
-  left_motor_ = std::make_shared<EtherbotixMotor>("l_wheel_joint", 1);
-  right_motor_ = std::make_shared<EtherbotixMotor>("r_wheel_joint", 1);
+  m1_ = std::make_shared<EtherbotixMotor>("l_wheel_joint", 1);
+  m2_ = std::make_shared<EtherbotixMotor>("r_wheel_joint", 1);
 
   // Periodic update through a boost::asio timer
   update_timer_.async_wait(boost::bind(&Etherbotix::update, this, _1));
@@ -408,8 +408,8 @@ void Etherbotix::handle_receive(
         else if (addr == REG_MOTOR_PERIOD)
         {
           motor_period_ = recv_buffer_[idx + i];
-          left_motor_->update_motor_period_from_packet(motor_period_);
-          right_motor_->update_motor_period_from_packet(motor_period_);
+          m1_->update_motor_period_from_packet(motor_period_);
+          m2_->update_motor_period_from_packet(motor_period_);
         }
         else if (addr == REG_MOTOR_MAX_STEP)
         {
@@ -427,7 +427,7 @@ void Etherbotix::handle_receive(
                         (recv_buffer_[idx + i + 7] << 24);
           int16_t cur = (recv_buffer_[idx + i + 12] << 0) +
                         (recv_buffer_[idx + i + 13] << 8);
-          left_motor_->update_from_packet(vel, pos, cur);
+          m1_->update_from_packet(vel, pos, cur);
         }
         else if (addr == REG_MOTOR2_VEL)
         {
@@ -440,7 +440,7 @@ void Etherbotix::handle_receive(
                         (recv_buffer_[idx + i + 9] << 24);
           int16_t cur = (recv_buffer_[idx + i + 12] << 0) +
                         (recv_buffer_[idx + i + 13] << 8);
-          right_motor_->update_from_packet(vel, pos, cur);
+          m2_->update_from_packet(vel, pos, cur);
         }
         else if (addr == REG_MOTOR1_KP)
         {
@@ -448,7 +448,7 @@ void Etherbotix::handle_receive(
           float kd = copy_float(recv_buffer_[idx + i + 4]);
           float ki = copy_float(recv_buffer_[idx + i + 8]);
           float windup = copy_float(recv_buffer_[idx + i + 12]);
-          left_motor_->update_gains_from_packet(kp, kd, ki, windup);
+          m1_->update_gains_from_packet(kp, kd, ki, windup);
         }
         else if (addr == REG_MOTOR2_KP)
         {
@@ -456,7 +456,7 @@ void Etherbotix::handle_receive(
           float kd = copy_float(recv_buffer_[idx + i + 4]);
           float ki = copy_float(recv_buffer_[idx + i + 8]);
           float windup = copy_float(recv_buffer_[idx + i + 12]);
-          right_motor_->update_gains_from_packet(kp, kd, ki, windup);
+          m2_->update_gains_from_packet(kp, kd, ki, windup);
         }
         else if (addr == REG_ACC_X)
         {

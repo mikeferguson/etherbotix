@@ -102,7 +102,7 @@ private:
 
   double velocity_;  // rad/s
   double position_;  // radians
-  float current_;    // amperes
+  double current_;   // amperes
 
   float kp_;
   float kd_;
