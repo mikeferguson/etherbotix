@@ -157,7 +157,9 @@ BOOST_PYTHON_MODULE(etherbotix_py)
     .def("get_name", &etherbotix::EtherbotixMotor::getName)
     .def("get_position", &etherbotix::EtherbotixMotor::getPosition)
     .def("get_velocity", &etherbotix::EtherbotixMotor::getVelocity)
-    .def("get_effort", &etherbotix::EtherbotixMotor::getEffort);
+    .def("get_effort", &etherbotix::EtherbotixMotor::getEffort)
+    .def("set_ticks_per_radian", &etherbotix::EtherbotixMotor::set_ticks_per_radian)
+    .def("set_ticks_offset", &etherbotix::EtherbotixMotor::set_ticks_offset);
 
   boost::python::register_ptr_to_python<std::shared_ptr<etherbotix::EtherbotixMotor>>();
 
