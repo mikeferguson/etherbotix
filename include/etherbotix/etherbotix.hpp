@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 Michael E. Ferguson
+ * Copyright 2013-2024 Michael E. Ferguson
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -200,8 +200,8 @@ public:
 
   int get_motor_max_step() { return motor_max_step_; }
 
-  EtherbotixMotorPtr getLeftMotor() { return left_motor_; }
-  EtherbotixMotorPtr getRightMotor() { return right_motor_; }
+  EtherbotixMotorPtr getMotor1() { return m1_; }
+  EtherbotixMotorPtr getMotor2() { return m2_; }
 
   int get_imu_version()
   {
@@ -301,8 +301,8 @@ protected:
   int imu_flags_;
   int motor_period_;
   int motor_max_step_;
-  EtherbotixMotorPtr left_motor_;
-  EtherbotixMotorPtr right_motor_;
+  EtherbotixMotorPtr m1_;
+  EtherbotixMotorPtr m2_;
   int16_t imu_acc_x_;
   int16_t imu_acc_y_;
   int16_t imu_acc_z_;

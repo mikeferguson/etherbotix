@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 Michael E. Ferguson
+ * Copyright 2020-2024 Michael E. Ferguson
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -65,20 +65,20 @@ int main ()
   std::cout << "Servo Current:  " << e.get_servo_current() << " A" << std::endl;
   std::cout << "Aux Current:    " << e.get_aux_current() << " A" << std::endl;
   std::cout << "Motor 1" << std::endl;
-  std::cout << "  Velocity:     " << e.getLeftMotor()->getVelocity() << std::endl;
-  std::cout << "  Position:     " << e.getLeftMotor()->getPosition() << std::endl;
-  std::cout << "  Current:      " << e.getLeftMotor()->getEffort() << " A" << std::endl;
+  std::cout << "  Velocity:     " << e.getMotor1()->getVelocity() << std::endl;
+  std::cout << "  Position:     " << e.getMotor1()->getPosition() << std::endl;
+  std::cout << "  Current:      " << e.getMotor1()->getEffort() << " A" << std::endl;
   float kp, kd, ki, windup;
-  if (e.getLeftMotor()->get_gains(kp, kd, ki, windup))
+  if (e.getMotor1()->get_gains(kp, kd, ki, windup))
   {
     std::cout << "  Gains:        Kp: " << kp << ", Kd: " << kd <<
                  ", Ki: " << ki << ", Windup: " << windup << std::endl;
   }
   std::cout << "Motor 2" << std::endl;
-  std::cout << "  Velocity:     " << e.getRightMotor()->getVelocity() << std::endl;
-  std::cout << "  Position:     " << e.getRightMotor()->getPosition() << std::endl;
-  std::cout << "  Current:      " << e.getRightMotor()->getEffort() << " A" << std::endl;
-  if (e.getRightMotor()->get_gains(kp, kd, ki, windup))
+  std::cout << "  Velocity:     " << e.getMotor2()->getVelocity() << std::endl;
+  std::cout << "  Position:     " << e.getMotor2()->getPosition() << std::endl;
+  std::cout << "  Current:      " << e.getMotor2()->getEffort() << " A" << std::endl;
+  if (e.getMotor2()->get_gains(kp, kd, ki, windup))
   {
     std::cout << "  Gains:        Kp: " << kp << ", Kd: " << kd <<
                  ", Ki: " << ki << ", Windup: " << windup << std::endl;
