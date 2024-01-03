@@ -62,6 +62,9 @@ public:
   /** @brief Set the ticks per radians for conversion. */
   void set_ticks_per_radian(double ticks_per_radian);
 
+  /** @brief Set the ticks offset for zero radians. */
+  void set_ticks_offset(int ticks_offset);
+
   /** @brief Send gains to the board. */
   bool set_gains(float kp, float kd, float ki, float windup);
 
@@ -94,6 +97,7 @@ public:
 private:
   std::string name_;
   double ticks_per_radian_;
+  int ticks_offset_;
   int motor_period_;
 
   double velocity_;  // rad/s

@@ -71,6 +71,10 @@ EtherbotixROS::EtherbotixROS(const rclcpp::NodeOptions & options)
   double ticks_per_radian = this->declare_parameter<double>("ticks_per_radian", 1.0);
   left_motor_ = std::make_shared<EtherbotixMotor>(l_motor_name, ticks_per_radian);
   right_motor_ = std::make_shared<EtherbotixMotor>(r_motor_name, ticks_per_radian);
+  int left_offset = this->declare_parameter<int>("ticks_offset_l", 0);
+  int right_offset = this->declare_parameter<int>("ticks_offset_r", 0);
+  left_motor_->set_ticks_offset(left_offset);
+  right_motor_->set_ticks_offset(right_offset);
 
   double kp = this->declare_parameter<double>("motor_kp", 1.0);
   double kd = this->declare_parameter<double>("motor_kd", 0.0);

@@ -42,6 +42,7 @@ namespace etherbotix
 EtherbotixMotor::EtherbotixMotor(const std::string& name, double ticks_per_radian)
 : name_(name),
   ticks_per_radian_(ticks_per_radian),
+  ticks_offset_(0),
   motor_period_(-1),
   velocity_(0.0),
   position_(0.0),
@@ -63,6 +64,11 @@ EtherbotixMotor::~EtherbotixMotor(){}
 void EtherbotixMotor::set_ticks_per_radian(double ticks_per_radian)
 {
   ticks_per_radian_ = ticks_per_radian;
+}
+
+void EtherbotixMotor::set_ticks_offset(int ticks_offset)
+{
+  ticks_offset_ = ticks_offset;
 }
 
 bool EtherbotixMotor::set_gains(float kp, float kd, float ki, float windup)
@@ -102,7 +108,7 @@ void EtherbotixMotor::update_from_packet(int16_t velocity, int32_t position, int
   velocity_ = (velocity / ticks_per_radian_) * (1000.0 / motor_period_);
 
   // Convert to radians
-  position_ = position / ticks_per_radian_;
+  position_ = (position - ticks_offset_) / ticks_per_radian_;
 
   // TODO(fergs): Convert to amperes
   current_ = current;
