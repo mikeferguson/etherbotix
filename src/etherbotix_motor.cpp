@@ -51,11 +51,18 @@ EtherbotixMotor::EtherbotixMotor(const std::string& name, double ticks_per_radia
   kd_(-1.0),
   ki_(-1.0),
   windup_(-1.0),
-  desired_velocity_(0.0),
+  desired_velocity_(0),
+  desired_position_(0),
+  desired_mode_(MODE_VELOCITY),
   desired_kp_(-1.0),
   desired_kd_(-1.0),
   desired_ki_(-1.0),
-  desired_windup_(-1.0)
+  desired_windup_(-1.0),
+  position_min_(0.0),
+  position_max_(0.0),
+  velocity_max_(10000.0),
+  effort_max_(0.0),
+  is_continuous_(true)
 {
 }
 
@@ -69,6 +76,16 @@ void EtherbotixMotor::set_ticks_per_radian(double ticks_per_radian)
 void EtherbotixMotor::set_ticks_offset(int ticks_offset)
 {
   ticks_offset_ = ticks_offset;
+}
+
+void EtherbotixMotor::set_limits(double position_min, double position_max, double velocity_max,
+                                 double effort_max, bool continuous)
+{
+  position_min_ = position_min;
+  position_max_ = position_max;
+  velocity_max_ = velocity_max;
+  effort_max_ = effort_max;
+  is_continuous_ = continuous;
 }
 
 bool EtherbotixMotor::set_gains(float kp, float kd, float ki, float windup)
@@ -135,12 +152,36 @@ uint8_t EtherbotixMotor::get_packets(uint8_t * buffer, int motor_idx)
     return 0;
   }
 
-  uint8_t len = dynamixel::get_write_packet(
-    buffer,
-    Etherbotix::ETHERBOTIX_ID,
-    (motor_idx == 1) ? Etherbotix::REG_MOTOR1_VEL : Etherbotix::REG_MOTOR2_VEL,
-    {static_cast<uint8_t>(desired_velocity_ & 0xff),
-     static_cast<uint8_t>(desired_velocity_ >> 8)});
+  // Length of packets written to buffer
+  uint8_t len = 0;
+
+  // Send command
+  if (desired_mode_ == MODE_VELOCITY)
+  {
+    len += dynamixel::get_write_packet(
+      buffer,
+      Etherbotix::ETHERBOTIX_ID,
+      (motor_idx == 1) ? Etherbotix::REG_MOTOR1_VEL : Etherbotix::REG_MOTOR2_VEL,
+      {
+        static_cast<uint8_t>(desired_velocity_ & 0xff),
+        static_cast<uint8_t>(desired_velocity_ >> 8)
+      }
+    );
+  }
+  else if (desired_mode_ == MODE_POSITION)
+  {
+    len += dynamixel::get_write_packet(
+      buffer,
+      Etherbotix::ETHERBOTIX_ID,
+      (motor_idx == 1) ? Etherbotix::REG_MOTOR1_POS : Etherbotix::REG_MOTOR2_POS,
+      {
+        static_cast<uint8_t>(desired_position_ & 0xff),
+        static_cast<uint8_t>((desired_position_ >> 8) & 0xff),
+        static_cast<uint8_t>((desired_position_ >> 16) & 0xff),
+        static_cast<uint8_t>((desired_position_ >> 24) & 0xff)
+      }
+    );
+  }
 
   // Update gains if needed
   if (kp_ != desired_kp_ ||
@@ -167,9 +208,10 @@ uint8_t EtherbotixMotor::get_packets(uint8_t * buffer, int motor_idx)
   return len;
 }
 
-void EtherbotixMotor::setPosition(double /*position*/, double /*velocity*/, double /*effort*/)
+void EtherbotixMotor::setPosition(double position, double /*velocity*/, double /*effort*/)
 {
-  throw std::runtime_error("position control mode is not supported");
+  desired_position_ = (position * ticks_per_radian_) + ticks_offset_;
+  desired_mode_ = MODE_POSITION;
 }
 
 void EtherbotixMotor::setVelocity(double velocity, double /*effort*/)
@@ -180,6 +222,7 @@ void EtherbotixMotor::setVelocity(double velocity, double /*effort*/)
   }
 
   desired_velocity_ = (velocity * ticks_per_radian_) * (motor_period_ / 1000.0);
+  desired_mode_ = MODE_VELOCITY;
 }
 
 void EtherbotixMotor::setEffort(double effort)
@@ -188,9 +231,11 @@ void EtherbotixMotor::setEffort(double effort)
   throw std::runtime_error("effort control mode is not supported");
 }
 
-double EtherbotixMotor::getVelocityMax()
+void EtherbotixMotor::reset()
 {
-  return 10000;  // TODO(fergs): load this value
+  desired_velocity_ = 0;
+  desired_position_ = 0;
+  desired_mode_ = MODE_VELOCITY;
 }
 
 }  // namespace etherbotix

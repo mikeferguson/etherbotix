@@ -101,6 +101,8 @@ public:
                                         DEV_UNIQUE_ID, 12);
       ++packets_sent;
     }
+    len += m1_->get_packets(&buffer[len], 1);
+    len += m2_->get_packets(&buffer[len], 2);
     this->send(buffer, len);
     return packets_sent;
   }
@@ -158,6 +160,8 @@ BOOST_PYTHON_MODULE(etherbotix_py)
     .def("get_position", &etherbotix::EtherbotixMotor::getPosition)
     .def("get_velocity", &etherbotix::EtherbotixMotor::getVelocity)
     .def("get_effort", &etherbotix::EtherbotixMotor::getEffort)
+    .def("set_velocity", &etherbotix::EtherbotixMotor::setVelocity)
+    .def("set_position", &etherbotix::EtherbotixMotor::setPosition)
     .def("set_ticks_per_radian", &etherbotix::EtherbotixMotor::set_ticks_per_radian)
     .def("set_ticks_offset", &etherbotix::EtherbotixMotor::set_ticks_offset);
 

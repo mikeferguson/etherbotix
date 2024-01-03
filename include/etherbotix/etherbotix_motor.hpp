@@ -40,6 +40,9 @@ namespace etherbotix
 
 class EtherbotixMotor : public robot_controllers_interface::JointHandle
 {
+  static constexpr uint8_t MODE_VELOCITY = 1;
+  static constexpr uint8_t MODE_POSITION = 2;
+
 public:
   /**
    * @brief Manager for one of the base motors on an Etherbotix.
@@ -65,6 +68,10 @@ public:
   /** @brief Set the ticks offset for zero radians. */
   void set_ticks_offset(int ticks_offset);
 
+  /** @brief Set the limits of the joint. */
+  void set_limits(double position_min, double position_max, double velocity_max,
+                  double effort_max_, bool continuous);
+
   /** @brief Send gains to the board. */
   bool set_gains(float kp, float kd, float ki, float windup);
 
@@ -87,12 +94,12 @@ public:
   virtual void setPosition(double position, double velocity, double effort);
   virtual void setVelocity(double velocity, double effort);
   virtual void setEffort(double effort);
-  virtual bool isContinuous() { return true; }
-  virtual double getPositionMin() { return 0.0; }
-  virtual double getPositionMax() { return 0.0; }
-  virtual double getVelocityMax();
-  virtual double getEffortMax() { return 0.0; }
-  virtual void reset() { desired_velocity_ = 0; }
+  virtual bool isContinuous() { return is_continuous_; }
+  virtual double getPositionMin() { return position_min_; }
+  virtual double getPositionMax() { return position_max_; }
+  virtual double getVelocityMax() { return velocity_max_; }
+  virtual double getEffortMax() { return effort_max_; }
+  virtual void reset();
 
 private:
   std::string name_;
@@ -110,10 +117,17 @@ private:
   float windup_;
 
   int16_t desired_velocity_;
+  int32_t desired_position_;
+  uint8_t desired_mode_;
   float desired_kp_;
   float desired_kd_;
   float desired_ki_;
   float desired_windup_;
+
+  double position_min_, position_max_;
+  double velocity_max_;
+  double effort_max_;
+  bool is_continuous_;
 };
 
 using EtherbotixMotorPtr = std::shared_ptr<EtherbotixMotor>;

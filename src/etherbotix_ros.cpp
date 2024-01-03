@@ -147,6 +147,18 @@ void EtherbotixROS::setup_motor(const std::string & name,
   double kw = this->declare_parameter<double>(name + ".kw", 400.0);
   RCLCPP_INFO(logger_, "Setting %s gains to %f %f %f %f", name.c_str(), kp, kd, ki, kw);
   motor->set_gains(kp, kd, ki, kw);
+
+  double position_min =
+    this->declare_parameter<double>(name + ".position_min", motor->getPositionMin());
+  double position_max =
+    this->declare_parameter<double>(name + ".position_max", motor->getPositionMax());
+  double velocity_max =
+    this->declare_parameter<double>(name + ".velocity_max", motor->getVelocityMax());
+  double effort_max =
+    this->declare_parameter<double>(name + ".effort_max", motor->getEffortMax());
+  bool is_continuous =
+    this->declare_parameter<bool>(name + ".is_continuous", motor->isContinuous());
+  motor->set_limits(position_min, position_max, velocity_max, effort_max, is_continuous);
 }
 
 void EtherbotixROS::update(const boost::system::error_code & e)
